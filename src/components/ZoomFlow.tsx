@@ -34,7 +34,7 @@ import { CLUSTER_TREE, aggregateCounts, type ClusterTreeDef } from '../model/clu
 import { MODULE_BY_ID, MODULE_EDGES } from '../model/modules';
 import { DB_DOMAINS, DB_TABLE_COUNT, TABLE_BY_ID, TABLE_TO_STATUS, type DbDomainDef, type TableStatus } from '../model/dbschema';
 import { STORIES } from '../model/stories';
-import { moduleStatus, type ModuleStatus, type ModuleTileDef } from '../model/types';
+import { moduleStatus, type AgentStatus, type EdgeAgentDef, type ModuleStatus, type ModuleTileDef } from '../model/types';
 
 /* ── Overlay modes (recolour module cards by a chosen dimension) ── */
 
@@ -381,7 +381,44 @@ const ZTable = memo(({ data }: NodeProps) => {
   );
 });
 
-const ZOOM_NODE_TYPES = { zbubble: ZBubble, zmodule: ZModule, ztable: ZTable };
+/* ── Agent badge — rides the line between two modules ─────────── */
+
+const AGENT_COLOR: Record<AgentStatus, string> = { ready: '#22c55e', partial: '#f59e0b', planned: '#ef4444' };
+const AGENT_GLYPH: Record<AgentStatus, string> = { ready: '✓', partial: '◐', planned: '✗' };
+
+type ZAgentData = { name: string; status: AgentStatus; w: number; h: number };
+
+const ZAgent = memo(({ data }: NodeProps) => {
+  const d = data as unknown as ZAgentData;
+  const theme = useTheme();
+  const c = AGENT_COLOR[d.status];
+  return (
+    <div
+      className="zb"
+      style={{
+        width: d.w,
+        height: d.h,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '0 8px 0 9px',
+        borderRadius: 999,
+        background: theme.dark ? '#1b1530' : '#faf5ff',
+        border: `1.5px ${d.status === 'planned' ? 'dashed' : 'solid'} ${c}`,
+        boxShadow: `0 0 0 3px ${c}22, 0 4px 12px -3px rgba(0,0,0,0.4)`,
+        cursor: 'pointer',
+      }}
+      title={d.name}
+    >
+      <span style={{ fontSize: 12 }} aria-hidden>🤖</span>
+      <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: -0.2, color: theme.dark ? '#e9d5ff' : '#5b21b6', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.name}</span>
+      <span style={{ marginLeft: 'auto', width: 14, height: 14, borderRadius: 999, background: c, color: '#fff', display: 'grid', placeItems: 'center', fontSize: 8.5, fontWeight: 900, flexShrink: 0 }}>{AGENT_GLYPH[d.status]}</span>
+      <Ports />
+    </div>
+  );
+});
+
+const ZOOM_NODE_TYPES = { zbubble: ZBubble, zmodule: ZModule, ztable: ZTable, zagent: ZAgent };
 
 /* ── Legend (status key) ──────────────────────────────────────── */
 
@@ -476,6 +513,12 @@ function ZoomLegend({
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
           <span style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 700, color: theme.app.legendText }}>tbl</span> DB table
         </span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 10, color: theme.app.subtitle, marginTop: 5 }}>
+        <span>🤖 agent</span>
+        <span style={{ color: AGENT_COLOR.ready, fontWeight: 700 }}>✓ ready</span>
+        <span style={{ color: AGENT_COLOR.partial, fontWeight: 700 }}>◐ partial</span>
+        <span style={{ color: AGENT_COLOR.planned, fontWeight: 700 }}>✗ to build</span>
       </div>
     </div>
   );
@@ -706,7 +749,9 @@ function ZoomFlowInner() {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [inspect, setInspect] = useState<ModuleTileDef | null>(null);
   const [inspectTable, setInspectTable] = useState<(typeof TABLE_BY_ID)[string] | null>(null);
+  const [inspectAgent, setInspectAgent] = useState<{ agent: EdgeAgentDef; from: string; to: string } | null>(null);
   const [showConnections, setShowConnections] = useState(true);
+  const [showAgents, setShowAgents] = useState(true);
   const [overlay, setOverlay] = useState<OverlayMode>('status');
   const [statusFilter, setStatusFilter] = useState<Set<ModuleStatus>>(new Set());
   const [story, setStory] = useState<{ id: string; step: number } | null>(null);
@@ -750,6 +795,33 @@ function ZoomFlowInner() {
       }),
     [nodes, band],
   );
+
+  /* ── Agents that ride the lines between modules ── */
+  const agentNodes = useMemo<Node[]>(() => {
+    if (!showAgents || band === 'far') return [];
+    const out: Node[] = [];
+    const W = 152;
+    const H = 28;
+    for (const e of MODULE_EDGES) {
+      if (!e.agent) continue;
+      const a = rects.get(`z__${e.source}`);
+      const b = rects.get(`z__${e.target}`);
+      if (!a || !b) continue;
+      const cx = (a.x + a.width / 2 + b.x + b.width / 2) / 2;
+      const cy = (a.y + a.height / 2 + b.y + b.height / 2) / 2;
+      out.push({
+        id: `ag__${e.id}`,
+        type: 'zagent',
+        position: { x: cx - W / 2, y: cy - H / 2 },
+        data: { name: e.agent.name, status: e.agent.status, w: W, h: H },
+        draggable: false,
+        selectable: true,
+        zIndex: 1000,
+        style: { pointerEvents: 'auto' as const, zIndex: 1000 },
+      });
+    }
+    return out;
+  }, [showAgents, band, rects]);
 
   /* ── Filter + story focus → dim set + highlight ── */
   const activeStory = story ? STORIES.find((s) => s.id === story.id) ?? null : null;
@@ -812,7 +884,7 @@ function ZoomFlowInner() {
     <ZoomCtx.Provider value={{ overlay, dimmed, highlight }}>
     <div ref={wrapRef} style={{ flex: 1, position: 'relative', minHeight: 0 }}>
       <ReactFlow
-        nodes={displayNodes}
+        nodes={[...displayNodes, ...agentNodes]}
         edges={edges}
         nodeTypes={ZOOM_NODE_TYPES}
         colorMode={theme.dark ? 'dark' : 'light'}
@@ -823,20 +895,28 @@ function ZoomFlowInner() {
         nodesConnectable={false}
         proOptions={{ hideAttribution: true }}
         onNodeClick={(_e, node) => {
+          if (node.type === 'zagent') {
+            const ed = MODULE_EDGES.find((x) => `ag__${x.id}` === node.id);
+            if (ed?.agent) {
+              setInspectAgent({ agent: ed.agent, from: MODULE_BY_ID[ed.source]?.name ?? ed.source, to: MODULE_BY_ID[ed.target]?.name ?? ed.target });
+              setInspect(null); setInspectTable(null);
+            }
+            return;
+          }
           if (node.type === 'ztable') {
             const tb = TABLE_BY_ID[node.id.replace('z__', '')];
-            if (tb) { setInspectTable(tb); setInspect(null); }
+            if (tb) { setInspectTable(tb); setInspect(null); setInspectAgent(null); }
             return;
           }
           if (node.type === 'zmodule') {
             const mod = MODULE_BY_ID[node.id.replace('z__', '')];
-            if (mod) { setInspect(mod); setInspectTable(null); }
+            if (mod) { setInspect(mod); setInspectTable(null); setInspectAgent(null); }
             return;
           }
           const rect = rects.get(node.id);
           if (rect) rf.fitBounds(rect, { padding: 0.12, duration: 700 });
         }}
-        onPaneClick={() => { setInspect(null); setInspectTable(null); }}
+        onPaneClick={() => { setInspect(null); setInspectTable(null); setInspectAgent(null); }}
         style={{ background: theme.zoomCanvas }}
       >
         <Background variant={BackgroundVariant.Dots} gap={34} size={1.1} color={theme.canvas.dots} />
@@ -863,6 +943,7 @@ function ZoomFlowInner() {
         ))}
         <span style={{ width: 1, height: 18, background: theme.canvas.panelBorder }} />
         <button onClick={() => setShowConnections((s) => !s)} style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 999, cursor: 'pointer', border: `1.5px solid ${showConnections ? theme.edge.neutral : theme.app.tabBorder}`, background: showConnections ? `${theme.edge.neutral}22` : 'transparent', color: showConnections ? theme.edge.neutral : theme.app.tabText, textDecoration: showConnections ? 'none' : 'line-through' }}>Connections</button>
+        <button onClick={() => setShowAgents((s) => !s)} style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 999, cursor: 'pointer', border: `1.5px solid ${showAgents ? '#9333ea' : theme.app.tabBorder}`, background: showAgents ? '#9333ea22' : 'transparent', color: showAgents ? '#9333ea' : theme.app.tabText, textDecoration: showAgents ? 'none' : 'line-through' }}>🤖 Agents</button>
         <button onClick={exportPng} disabled={exporting} style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 999, cursor: 'pointer', border: `1.5px solid ${theme.app.tabBorder}`, background: 'transparent', color: theme.app.tabText }}>{exporting ? '…' : '⤓ PNG'}</button>
         <button onClick={() => rf.fitView({ padding: 0.05, duration: 700 })} style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 999, cursor: 'pointer', border: `1.5px solid ${theme.app.tabBorder}`, background: 'transparent', color: theme.app.tabText }}>⤺ Full</button>
       </div>
@@ -891,6 +972,8 @@ function ZoomFlowInner() {
         <ModuleInspector mod={inspect} onClose={() => setInspect(null)} />
       ) : inspectTable ? (
         <TableInspector table={inspectTable} onClose={() => setInspectTable(null)} />
+      ) : inspectAgent ? (
+        <AgentInspector data={inspectAgent} onClose={() => setInspectAgent(null)} />
       ) : (
         <ZoomLegend
           overlay={overlay}
@@ -907,6 +990,36 @@ function ZoomFlowInner() {
       )}
     </div>
     </ZoomCtx.Provider>
+  );
+}
+
+/* ── Agent inspector ──────────────────────────────────────────── */
+
+function AgentInspector({ data, onClose }: { data: { agent: EdgeAgentDef; from: string; to: string }; onClose: () => void }) {
+  const theme = useTheme();
+  const { agent, from, to } = data;
+  const c = AGENT_COLOR[agent.status];
+  const label = agent.status === 'ready' ? 'Ready' : agent.status === 'partial' ? 'Partial' : 'To build';
+  return (
+    <div style={{ position: 'absolute', bottom: 14, left: 14, width: 330, background: theme.inspector.bg, border: `1px solid ${theme.inspector.border}`, borderRadius: 12, padding: '12px 14px', boxShadow: theme.dark ? '0 4px 16px rgba(0,0,0,0.6)' : '0 4px 16px rgba(0,0,0,0.15)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <span style={{ fontSize: 14 }} aria-hidden>🤖</span>
+        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 9px', borderRadius: 999, background: `${c}22`, color: c, border: `1px ${agent.status === 'planned' ? 'dashed' : 'solid'} ${c}` }}>{AGENT_GLYPH[agent.status]} {label}</span>
+        <button onClick={onClose} style={{ marginLeft: 'auto', border: 'none', background: 'none', cursor: 'pointer', color: theme.app.subtitle, fontSize: 14 }}>✕</button>
+      </div>
+      <div style={{ fontSize: 13, fontWeight: 700, color: theme.inspector.title, marginBottom: 4 }}>{agent.name}</div>
+      <div style={{ fontSize: 10.5, color: theme.app.subtitle, marginBottom: agent.desc ? 8 : 0 }}>
+        between <span style={{ fontWeight: 700, color: theme.inspector.text }}>{from}</span> → <span style={{ fontWeight: 700, color: theme.inspector.text }}>{to}</span>
+      </div>
+      {agent.desc && <div style={{ fontSize: 11.5, color: theme.inspector.text, lineHeight: 1.45, marginBottom: agent.tools?.length ? 8 : 0 }}>{agent.desc}</div>}
+      {agent.tools && agent.tools.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+          {agent.tools.map((t) => (
+            <span key={t} style={{ fontFamily: 'ui-monospace, monospace', fontSize: 9.5, fontWeight: 600, padding: '2px 7px', borderRadius: 6, background: theme.inspector.chipBg, color: theme.inspector.chipText }}>{t}</span>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

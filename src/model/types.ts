@@ -95,12 +95,26 @@ export interface ModuleTileDef {
   profiles?: string[];
 }
 
+export type AgentStatus = 'ready' | 'partial' | 'planned';
+
+/** An AI agent that mediates a relationship — rides on the edge line. */
+export interface EdgeAgentDef {
+  name: string;
+  status: AgentStatus;
+  /** What it does, for the inspector. */
+  desc?: string;
+  /** Tool names it owns. */
+  tools?: string[];
+}
+
 /** Directed relation between two modules ("which module relates to what"). */
 export interface ModuleEdgeDef {
   id: string;
   source: string;
   target: string;
   label: string;
+  /** An AI agent sitting "in between the lines" of this relation. */
+  agent?: EdgeAgentDef;
 }
 
 export interface PlacedTile extends ModuleTileDef {

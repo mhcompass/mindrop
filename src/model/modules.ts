@@ -200,21 +200,21 @@ export const MODULE_BY_ID: Record<string, ModuleTileDef> = Object.fromEntries(AL
 
 /* ── Module-to-module relations ───────────────────────────────── */
 
-function me(id: string, source: string, target: string, label: string): ModuleEdgeDef {
-  return { id, source, target, label };
+function me(id: string, source: string, target: string, label: string, agent?: ModuleEdgeDef['agent']): ModuleEdgeDef {
+  return { id, source, target, label, agent };
 }
 
 /** Which module relates to what. Rendered on the Zoom Map at mid/near
  *  zoom; endpoints are module ids from SECTIONS above. */
 export const MODULE_EDGES: ModuleEdgeDef[] = [
   /* ITIL flow */
-  me('me_inc_prob', 't_inc', 't_prob', 'recurrence promotes'),
-  me('me_prob_chg', 't_prob', 't_chg', 'permanent fix'),
-  me('me_chg_cab', 't_chg', 't_cab', 'scheduled at CAB'),
+  me('me_inc_prob', 't_inc', 't_prob', 'recurrence promotes', { name: 'Pattern Agent', status: 'planned', desc: 'Detects recurring incidents and promotes a problem record.', tools: ['match_pattern', 'merge_tickets'] }),
+  me('me_prob_chg', 't_prob', 't_chg', 'permanent fix', { name: 'Change-Risk Agent', status: 'planned', desc: 'Scores change risk from factors and drafts the fix.', tools: ['score_change', 'draft_cab_brief'] }),
+  me('me_chg_cab', 't_chg', 't_cab', 'scheduled at CAB', { name: 'CAB Scheduler', status: 'planned', desc: 'Finds the safest maintenance window and flags conflicts.', tools: ['find_window', 'detect_conflict'] }),
   me('me_cab_appr', 't_cab', 't_appr', 'approval gate'),
-  me('me_war_inc', 't_war', 't_inc', 'declared from P1'),
-  me('me_oncall_war', 't_oncall', 't_war', 'pages the bridge'),
-  me('me_sla_inc', 't_sla', 't_inc', 'breach risk'),
+  me('me_war_inc', 't_war', 't_inc', 'declared from P1', { name: 'Briefing Agent', status: 'partial', desc: 'Regenerates the exec briefing every few minutes.', tools: ['summarise_warroom'] }),
+  me('me_oncall_war', 't_oncall', 't_war', 'pages the bridge', { name: 'Paging Agent', status: 'planned', desc: 'Auto-pages on-call from the rotation.', tools: ['page_oncall'] }),
+  me('me_sla_inc', 't_sla', 't_inc', 'breach risk', { name: 'SLA Watcher', status: 'partial', desc: 'Predicts SLA breaches; client-side today.', tools: ['predict_breach'] }),
   me('me_links_prob', 't_links', 't_prob', 'INC↔PRB↔CHG links'),
   /* Citizen intake */
   me('me_portal_cat', 't_portal', 't_catalog', 'make a request'),
@@ -224,19 +224,19 @@ export const MODULE_EDGES: ModuleEdgeDef[] = [
   me('me_exch_notif', 't_exch', 't_notif', 'sends email'),
   /* CMDB */
   me('me_cmdb_inc', 't_cmdb', 't_inc', 'CI impact'),
-  me('me_sccm_cmdb', 't_sccm', 't_cmdb', 'device sync'),
+  me('me_sccm_cmdb', 't_sccm', 't_cmdb', 'device sync', { name: 'Device Agent', status: 'ready', desc: 'Pulls device inventory + compliance from Graph/SCCM.', tools: ['sync_devices', 'check_compliance'] }),
   /* AI involvement */
-  me('me_chat_inc', 't_chat', 't_inc', 'triage tools'),
-  me('me_know_inc', 't_know', 't_inc', 'KB citations'),
+  me('me_chat_inc', 't_chat', 't_inc', 'triage tools', { name: 'Triage Agent', status: 'partial', desc: 'Classifies the incident; needs the incidents backend to persist.', tools: ['classify_incident', 'route_ticket'] }),
+  me('me_know_inc', 't_know', 't_inc', 'KB citations', { name: 'Knowledge Agent', status: 'ready', desc: 'Surfaces KB clauses as citations during triage.', tools: ['search_kb', 'cite_clause'] }),
   me('me_chat_know', 't_chat', 't_know', 'RAG retrieval'),
   me('me_voice_chat', 't_voice', 't_chat', 'voice mode'),
-  me('me_phone_voice', 't_phone', 't_voice', 'STT / TTS'),
-  me('me_watch_prob', 't_watch', 't_prob', 'pattern candidates'),
+  me('me_phone_voice', 't_phone', 't_voice', 'STT / TTS', { name: 'Voice Agent', status: 'ready', desc: 'Whisper in, Kokoro out — AR + EN.', tools: ['transcribe', 'synthesize'] }),
+  me('me_watch_prob', 't_watch', 't_prob', 'pattern candidates', { name: 'Watchlist Agent', status: 'partial', desc: 'Watches metric polls; raises emerging-pattern candidates.', tools: ['watch_metric', 'raise_candidate'] }),
   me('me_gov_trace', 't_gov', 't_trace', 'decision replay'),
-  me('me_user_auth', 't_auth', 't_user', 'directory'),
+  me('me_user_auth', 't_auth', 't_user', 'directory', { name: 'User Mgmt Agent', status: 'ready', desc: 'Resets, unlocks, onboarding (mock / Graph / LDAP).', tools: ['reset_password', 'unlock_account'] }),
   /* Metrics & reports */
   me('me_dash_agg', 't_dash', 't_agg', 'reads aggregates'),
-  me('me_reports_locker', 't_reports', 't_locker', 'filed to locker'),
+  me('me_reports_locker', 't_reports', 't_locker', 'filed to locker', { name: 'Reports Agent', status: 'ready', desc: 'Compiles scheduled reports; files artifacts to the locker.', tools: ['compile_report', 'file_artifact'] }),
   /* Infrastructure */
   me('me_agg_pg', 't_agg', 't_pg', 'queries'),
   me('me_seeder_pg', 't_seeder', 't_pg', 'loads fixtures'),
@@ -252,7 +252,7 @@ export const MODULE_EDGES: ModuleEdgeDef[] = [
   me('me_api_inc', 't_apipub', 't_inc', 'REST'),
   me('me_emailin_inc', 't_emailin', 't_inc', 'creates'),
   me('me_webhook_inc', 't_webhook', 't_inc', 'alerts → inc'),
-  me('me_console_chat', 't_console', 't_chat', 'ask Compass'),
+  me('me_console_chat', 't_console', 't_chat', 'ask Compass', { name: 'Compass Orchestrator', status: 'ready', desc: 'The core agent loop — plans, calls tools, traces every step.', tools: ['plan', 'call_tool', 'reflect'] }),
   /* External systems */
   me('me_entra_auth', 't_entra', 't_auth', 'OIDC'),
   me('me_graph_sccm', 't_graph', 't_sccm', 'devices'),
