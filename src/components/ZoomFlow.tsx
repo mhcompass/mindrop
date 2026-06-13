@@ -31,6 +31,7 @@ import { ModuleInspector, PILL_LABEL, Ports } from './nodes';
 import { useTheme } from '../theme';
 import { CLUSTER_TREE, aggregateCounts, type ClusterTreeDef } from '../model/clusters';
 import { MODULE_BY_ID, MODULE_EDGES } from '../model/modules';
+import { DB_DOMAINS, DB_TABLE_COUNT, TABLE_BY_ID, TABLE_TO_STATUS, type DbDomainDef, type TableStatus } from '../model/dbschema';
 import { moduleStatus, type ModuleTileDef } from '../model/types';
 
 /* ── Zoom bands ───────────────────────────────────────────────── */
@@ -49,6 +50,8 @@ type ZBubbleData = {
   w: number;
   h: number;
   total: number;
+  unit?: 'module' | 'table';
+  subtitle?: string;
 };
 
 const ZBubble = memo(({ data }: NodeProps) => {
@@ -56,6 +59,7 @@ const ZBubble = memo(({ data }: NodeProps) => {
   const zoom = useZoom();
   const theme = useTheme();
   const far = zoom < FAR;
+  const unit = d.unit ?? 'module';
 
   if (d.depth === 0) {
     return (
@@ -106,7 +110,7 @@ const ZBubble = memo(({ data }: NodeProps) => {
             {d.name}
           </span>
           <span style={{ fontSize: 20, fontWeight: 650, letterSpacing: 3, textTransform: 'uppercase', color: theme.cluster.countText }}>
-            {d.total} {d.total === 1 ? 'module' : 'modules'}
+            {d.total} {d.total === 1 ? unit : `${unit}s`}{d.subtitle ? ` · ${d.subtitle}` : ''}
           </span>
         </div>
         {/* Near-view corner chip */}
@@ -124,7 +128,9 @@ const ZBubble = memo(({ data }: NodeProps) => {
           }}
         >
           <span style={{ fontSize: 23, fontWeight: 900, letterSpacing: -0.4, color: d.accent }}>{d.name}</span>
-          <span style={{ fontSize: 12.5, fontWeight: 600, letterSpacing: 0.2, color: theme.cluster.countText }}>{d.total} modules</span>
+          <span style={{ fontSize: 12.5, fontWeight: 600, letterSpacing: 0.2, color: theme.cluster.countText }}>
+            {d.total} {`${unit}s`}{d.subtitle ? ` · ${d.subtitle}` : ''}
+          </span>
         </div>
         <Ports />
       </div>
@@ -249,7 +255,77 @@ const ZModule = memo(({ data }: NodeProps) => {
   );
 });
 
-const ZOOM_NODE_TYPES = { zbubble: ZBubble, zmodule: ZModule };
+type ZTableData = { id: string; name: string; status: TableStatus; note?: string; w: number; h: number };
+
+const ZTable = memo(({ data }: NodeProps) => {
+  const d = data as unknown as ZTableData;
+  const zoom = useZoom();
+  const theme = useTheme();
+  const far = zoom < FAR;
+  const near = zoom >= NEAR;
+  const pill = theme.tile.pill[TABLE_TO_STATUS[d.status]];
+
+  return (
+    <div
+      className="zb zb-mod"
+      style={{
+        width: d.w,
+        height: d.h,
+        borderRadius: 9,
+        background: far ? pill.fg : theme.dark ? '#131b29' : '#ffffff',
+        border: `1.5px solid ${pill.fg}${far ? '00' : '55'}`,
+        borderLeft: `4px solid ${pill.fg}`,
+        opacity: far ? 0.3 : 1,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        gap: 1,
+        padding: '6px 11px',
+        cursor: 'pointer',
+        boxShadow: far ? 'none' : theme.dark ? '0 4px 12px -7px rgba(0,0,0,0.6)' : '0 4px 12px -7px rgba(15,23,42,0.2)',
+      }}
+      title={d.name}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, opacity: far ? 0 : 1, transition: 'opacity 0.3s' }}>
+        <span style={{ width: 6, height: 6, borderRadius: 999, background: pill.fg, flexShrink: 0 }} />
+        <span
+          style={{
+            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+            fontSize: 11.5,
+            fontWeight: 700,
+            letterSpacing: -0.2,
+            color: theme.dark ? '#e5e7eb' : '#1f2937',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {d.name}
+        </span>
+      </div>
+      {d.note && (
+        <div
+          style={{
+            fontSize: 8.5,
+            fontWeight: 500,
+            color: theme.dark ? '#94a3b8' : '#64748b',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            paddingLeft: 12,
+            opacity: near ? 1 : 0,
+            transition: 'opacity 0.3s',
+          }}
+        >
+          {d.note}
+        </div>
+      )}
+      <Ports />
+    </div>
+  );
+});
+
+const ZOOM_NODE_TYPES = { zbubble: ZBubble, zmodule: ZModule, ztable: ZTable };
 
 /* ── Legend (status key) ──────────────────────────────────────── */
 
@@ -300,7 +376,10 @@ function ZoomLegend() {
           relation
         </span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-          <span style={{ fontSize: 11 }}>🔍</span> zoom in for detail
+          <span style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 700, color: theme.app.legendText }}>tbl</span> DB table
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <span style={{ fontSize: 11 }}>🔍</span> zoom in
         </span>
       </div>
     </div>
@@ -318,6 +397,16 @@ const SUB_HEAD = 58;
 const SUB_MAX_W = 3 * MOD_W + 2 * GAP + 2 * PAD;
 const TOP_MAX_W = 1750;
 const ROOT_MAX_W = 3900;
+
+/* Data Model (Postgres schema) — deeper leaf level: domain → table. */
+const TBL_W = 188;
+const TBL_H = 46;
+const TGAP = 12;
+const DOM_HEAD = 46;
+const DOM_PAD = 16;
+const DOM_MAX_W = 2 * TBL_W + TGAP + 2 * DOM_PAD; // 2 tables per row
+const DM_MAX_W = 3 * (DOM_MAX_W + GAP) + PAD; // ~3 domains per row
+const DATAMODEL_ACCENT = '#6366f1';
 
 interface Rect {
   x: number;
@@ -391,6 +480,79 @@ function layoutZCluster(def: ClusterTreeDef, depth: 0 | 1): Measured {
   return { w, h, nodes: [self, ...childNodes] };
 }
 
+/** One domain bubble (depth 1) packed with table leaves. */
+function layoutDbDomain(dom: DbDomainDef): Measured {
+  let x = DOM_PAD;
+  let y = DOM_HEAD;
+  let rowH = 0;
+  let usedW = 0;
+  const childNodes: Node[] = [];
+  for (const tb of dom.tables) {
+    if (x > DOM_PAD && x + TBL_W > DOM_MAX_W) {
+      x = DOM_PAD;
+      y += rowH + TGAP;
+      rowH = 0;
+    }
+    childNodes.push({
+      id: `z__${tb.id}`,
+      type: 'ztable',
+      position: { x, y },
+      parentId: `z_${dom.id}`,
+      data: { id: tb.id, name: tb.name, status: tb.status, note: tb.note, w: TBL_W, h: TBL_H },
+      draggable: false,
+      zIndex: 4,
+    });
+    x += TBL_W + TGAP;
+    usedW = Math.max(usedW, x - TGAP);
+    rowH = Math.max(rowH, TBL_H);
+  }
+  const w = Math.max(usedW + DOM_PAD, 320);
+  const h = y + rowH + DOM_PAD;
+  const self: Node = {
+    id: `z_${dom.id}`,
+    type: 'zbubble',
+    position: { x: 0, y: 0 },
+    data: { name: dom.name, accent: dom.accent, depth: 1, w, h, total: dom.tables.length, unit: 'table' },
+    draggable: false,
+    zIndex: 2,
+  };
+  return { w, h, nodes: [self, ...childNodes] };
+}
+
+/** The "Data Model" top-level bubble (depth 0) of domain bubbles. */
+function layoutDbModel(): Measured {
+  let x = PAD;
+  let y = TOP_HEAD;
+  let rowH = 0;
+  let usedW = 0;
+  const childNodes: Node[] = [];
+  for (const dom of DB_DOMAINS) {
+    const item = layoutDbDomain(dom);
+    if (x > PAD && x + item.w > DM_MAX_W) {
+      x = PAD;
+      y += rowH + GAP;
+      rowH = 0;
+    }
+    item.nodes[0].position = { x, y };
+    item.nodes[0].parentId = 'z_c_datamodel';
+    childNodes.push(...item.nodes);
+    x += item.w + GAP;
+    usedW = Math.max(usedW, x - GAP);
+    rowH = Math.max(rowH, item.h);
+  }
+  const w = Math.max(usedW + PAD, 760);
+  const h = y + rowH + PAD;
+  const self: Node = {
+    id: 'z_c_datamodel',
+    type: 'zbubble',
+    position: { x: 0, y: 0 },
+    data: { name: 'Data Model', accent: DATAMODEL_ACCENT, depth: 0, w, h, total: DB_TABLE_COUNT, unit: 'table', subtitle: 'Postgres schema' },
+    draggable: false,
+    zIndex: 0,
+  };
+  return { w, h, nodes: [self, ...childNodes] };
+}
+
 function layoutZRoot(): { nodes: Node[]; rects: Map<string, Rect> } {
   let x = 0;
   let y = 0;
@@ -408,6 +570,11 @@ function layoutZRoot(): { nodes: Node[]; rects: Map<string, Rect> } {
     x += item.w + 140;
     rowH = Math.max(rowH, item.h);
   }
+  // Data Model sits on its own row beneath the capability clusters.
+  const dm = layoutDbModel();
+  dm.nodes[0].position = { x: 0, y: y + rowH + 200 };
+  nodes.push(...dm.nodes);
+
   // Absolute rects (accumulate parent offsets) for click-to-zoom.
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const rects = new Map<string, Rect>();
@@ -442,6 +609,7 @@ function ZoomFlowInner() {
   const theme = useTheme();
   const rf = useReactFlow();
   const [inspect, setInspect] = useState<ModuleTileDef | null>(null);
+  const [inspectTable, setInspectTable] = useState<(typeof TABLE_BY_ID)[string] | null>(null);
   const [showConnections, setShowConnections] = useState(true);
 
   const { nodes, rects } = useMemo(() => layoutZRoot(), []);
@@ -476,7 +644,7 @@ function ZoomFlowInner() {
     () =>
       nodes.map((n) => {
         const isInterior =
-          n.type === 'zmodule' || (n.type === 'zbubble' && (n.data as { depth?: number }).depth === 1);
+          n.type === 'zmodule' || n.type === 'ztable' || (n.type === 'zbubble' && (n.data as { depth?: number }).depth === 1);
         if (!isInterior) return n;
         return { ...n, style: { ...n.style, pointerEvents: band === 'far' ? ('none' as const) : ('auto' as const) } };
       }),
@@ -497,15 +665,20 @@ function ZoomFlowInner() {
         nodesConnectable={false}
         proOptions={{ hideAttribution: true }}
         onNodeClick={(_e, node) => {
+          if (node.type === 'ztable') {
+            const tb = TABLE_BY_ID[node.id.replace('z__', '')];
+            if (tb) { setInspectTable(tb); setInspect(null); }
+            return;
+          }
           if (node.type === 'zmodule') {
             const mod = MODULE_BY_ID[node.id.replace('z__', '')];
-            if (mod) setInspect(mod);
+            if (mod) { setInspect(mod); setInspectTable(null); }
             return;
           }
           const rect = rects.get(node.id);
           if (rect) rf.fitBounds(rect, { padding: 0.12, duration: 700 });
         }}
-        onPaneClick={() => setInspect(null)}
+        onPaneClick={() => { setInspect(null); setInspectTable(null); }}
         style={{ background: theme.zoomCanvas }}
       >
         <Background variant={BackgroundVariant.Dots} gap={34} size={1.1} color={theme.canvas.dots} />
@@ -515,8 +688,11 @@ function ZoomFlowInner() {
           zoomable
           nodeColor={(n) => {
             if (n.type === 'zbubble') return ((n.data as { accent?: string }).accent ?? '#94a3b8') + '66';
-            const mod = MODULE_BY_ID[n.id.replace('z__', '')];
-            return mod ? theme.tile.pill[moduleStatus(mod)].fg : '#94a3b8';
+            const key = n.id.replace('z__', '');
+            const mod = MODULE_BY_ID[key];
+            if (mod) return theme.tile.pill[moduleStatus(mod)].fg;
+            const tb = TABLE_BY_ID[key];
+            return tb ? theme.tile.pill[TABLE_TO_STATUS[tb.status]].fg : '#94a3b8';
           }}
         />
       </ReactFlow>
@@ -549,7 +725,35 @@ function ZoomFlowInner() {
         </span>
       </div>
 
-      {inspect ? <ModuleInspector mod={inspect} onClose={() => setInspect(null)} /> : <ZoomLegend />}
+      {inspect ? (
+        <ModuleInspector mod={inspect} onClose={() => setInspect(null)} />
+      ) : inspectTable ? (
+        <TableInspector table={inspectTable} onClose={() => setInspectTable(null)} />
+      ) : (
+        <ZoomLegend />
+      )}
+    </div>
+  );
+}
+
+/* ── Table inspector ──────────────────────────────────────────── */
+
+function TableInspector({ table, onClose }: { table: (typeof TABLE_BY_ID)[string]; onClose: () => void }) {
+  const theme = useTheme();
+  const pill = theme.tile.pill[TABLE_TO_STATUS[table.status]];
+  const label = table.status === 'live' ? 'Live' : table.status === 'partial' ? 'Partial' : 'To build';
+  return (
+    <div style={{ position: 'absolute', bottom: 14, left: 14, width: 320, background: theme.inspector.bg, border: `1px solid ${theme.inspector.border}`, borderRadius: 12, padding: '12px 14px', boxShadow: theme.dark ? '0 4px 16px rgba(0,0,0,0.6)' : '0 4px 16px rgba(0,0,0,0.15)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 9px', borderRadius: 999, background: pill.bg, color: pill.fg }}>{label}</span>
+        <span style={{ fontSize: 10, fontWeight: 600, color: theme.app.subtitle }}>{table.domain}</span>
+        <button onClick={onClose} style={{ marginLeft: 'auto', border: 'none', background: 'none', cursor: 'pointer', color: theme.app.subtitle, fontSize: 14 }}>✕</button>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: table.note ? 7 : 0 }}>
+        <span style={{ width: 8, height: 8, borderRadius: 999, background: pill.fg, flexShrink: 0 }} />
+        <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 14, fontWeight: 700, color: theme.inspector.title }}>{table.name}</span>
+      </div>
+      {table.note && <div style={{ fontSize: 11.5, color: theme.inspector.text, lineHeight: 1.45 }}>{table.note}</div>}
     </div>
   );
 }
