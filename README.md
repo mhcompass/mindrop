@@ -21,18 +21,21 @@ npm run dev      # → http://localhost:5180
 | **Master Connected Map** | Every surface → seeded fixture → (existing or missing) API → module → store |
 | **Module Tracker** | Neutral flat inventory — every module as a tile with UI / API state chips and a status pill (Implemented · Partial · UI only · Not started) + auto-computed summary counts |
 | **Clusters** | Capability hierarchy — clusters containing sub-clusters containing modules (ITSM → Service Operations → Incident Mgmt …), collapsible per cluster into summary cards with status-distribution bars, semantic inter-cluster connections (toggleable, "lift" to the collapsed parent when an endpoint is hidden), and 🤖 agent pills floating between the clusters they work across (draggable; click for description) |
-| **Zoom Map** | Same hierarchy, different feel — semantic zoom instead of collapse. Far out: giant cluster names over faint card texture. Click a card to dive in; left-aligned sub-cluster headers + module cards (status dot + name on top, status pill + UI/API meta on bottom) sharpen as you zoom; module-to-module relations and a status **legend** (bottom-left, swaps to the inspector on click) round it out. At far zoom, interiors are click-transparent so any click dives into the cluster. Includes an **Infrastructure** cluster (Postgres · Qdrant · MinIO · TTS · LLM · Langfuse · Compose) and a **Data Model** group — the Postgres schema organised by domain (ITSM Records · CMDB · Service Desk · Knowledge · Conversation · Identity · Ops), where the deepest level is the actual **tables** (monospace cards, live/to-build, defined in `src/model/dbschema.ts`) |
+| **Zoom Map** | Same hierarchy, different feel — semantic zoom instead of collapse. Far out: giant cluster names over faint card texture. Click a card to dive in; left-aligned sub-cluster headers + module cards (status dot + name on top, status pill + UI/API meta on bottom) sharpen as you zoom; module-to-module relations and a status **legend** (bottom-left, swaps to the inspector on click) round it out. At far zoom, interiors are click-transparent so any click dives into the cluster. Includes an **Infrastructure** cluster (Postgres · Qdrant · MinIO · TTS · LLM · Langfuse · Compose) and a **Data Model** group — the Postgres schema organised by domain (ITSM Records · CMDB · Service Desk · Knowledge · Conversation · Identity · Ops), where the deepest level is the actual **tables** (monospace cards, live/to-build, defined in `src/model/dbschema.ts`). Also carries **Channels** (ingress) and **External Systems** clusters, **overlay colour modes** (Status / Owner / Effort / Sensitivity), a status **filter**, **value-stream playback** of the 6 demo stories (camera + caption), and **PNG export** |
+| **Deployment** | Runtime topology from docker-compose — the sovereign (air-gappable) Foundry GB10 boundary holding every container with ports, plus the opt-in enterprise systems outside it |
 
 ## Interactions
 
-- **Zoom / pan** — wheel, drag, controls (bottom-left), minimap (bottom-right)
-- **Layer toggles** (top-right) — show/hide Live / Seeded / Planned / Actor edge sets
-- **Dark mode** — 🌙/☀️ toggle in the header; follows OS preference on first load, persisted in localStorage
-- **Click a module tile** (Tracker / Clusters) — inspector panel with status pill, UI/API chips, and notes
+- **Zoom / pan** — wheel, drag, controls, minimap
+- **Layer / overlay toggles** (top-right) — edge sets, or recolour modules by Status / Owner / Effort / Sensitivity
+- **Value-stream playback** (Zoom, top-centre) — play a demo story A–F: the camera walks the modules it touches with a caption banner
+- **Status filter** (Zoom legend, click a swatch) — dims non-matching modules
+- **PNG export** (Zoom) — snapshot the current view
+- **Permalinks** — the active view is in the URL hash (`#zoom`, `#deployment`, …); shareable and back/forward-aware
+- **Dark mode** — 🌙/☀️ toggle; follows OS preference, persisted
+- **Click a module / table / box** — inspector panel (status, chips, notes; tables show their owning module)
 - **Search** (Clusters) — spotlight filter; non-matching tiles dim
-- **Persistence** — active tab and cluster collapse state survive reloads (localStorage)
-- **Click any box** — inspector panel with readiness status + notes
-- Live flows are animated; seeded imports are dotted amber; planned wiring is dashed red
+- **Persistence** — active tab + cluster collapse state survive reloads
 
 ## Editing the model
 

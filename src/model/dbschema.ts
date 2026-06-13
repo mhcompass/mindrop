@@ -15,6 +15,8 @@ export interface DbTableDef {
   name: string;
   status: TableStatus;
   note?: string;
+  /** Owning module id (defaults to the domain owner below). */
+  owner?: string;
 }
 
 export interface DbDomainDef {
@@ -109,9 +111,37 @@ export const DB_DOMAINS: DbDomainDef[] = [
   },
 ];
 
-export const TABLE_BY_ID: Record<string, DbTableDef & { domain: string }> = (() => {
-  const map: Record<string, DbTableDef & { domain: string }> = {};
-  for (const dom of DB_DOMAINS) for (const tb of dom.tables) map[tb.id] = { ...tb, domain: dom.name };
+/** Default owning module per domain (overridable per-table via owner). */
+const DOMAIN_OWNER: Record<string, string> = {
+  dm_itsm: 't_inc',
+  dm_cmdb: 't_cmdb',
+  dm_desk: 't_portal',
+  dm_know: 't_know',
+  dm_conv: 't_conv',
+  dm_identity: 't_auth',
+  dm_ops: 't_reports',
+};
+
+const TABLE_OWNER_OVERRIDE: Record<string, string> = {
+  tbl_major_inc: 't_war', tbl_warroom: 't_war',
+  tbl_problems: 't_prob', tbl_known_errors: 't_prob',
+  tbl_changes: 't_chg', tbl_cab: 't_chg',
+  tbl_xlinks: 't_links', tbl_sla: 't_sla',
+  tbl_devices: 't_sccm',
+  tbl_catalog: 't_catalog', tbl_approvals: 't_appr',
+  tbl_locker_folders: 't_locker', tbl_locker_items: 't_locker',
+  tbl_traces: 't_trace',
+  tbl_audit: 't_gov', tbl_decisions: 't_gov', tbl_policies: 't_gov',
+  tbl_connectors: 't_conn', tbl_watchlists: 't_watch', tbl_polls: 't_dash',
+};
+
+export const TABLE_BY_ID: Record<string, DbTableDef & { domain: string; owner: string }> = (() => {
+  const map: Record<string, DbTableDef & { domain: string; owner: string }> = {};
+  for (const dom of DB_DOMAINS) {
+    for (const tb of dom.tables) {
+      map[tb.id] = { ...tb, domain: dom.name, owner: tb.owner ?? TABLE_OWNER_OVERRIDE[tb.id] ?? DOMAIN_OWNER[dom.id] };
+    }
+  }
   return map;
 })();
 

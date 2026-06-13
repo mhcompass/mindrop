@@ -7,8 +7,8 @@
 import type { ArchNodeDef, ModuleTileDef, ModuleEdgeDef, PlacedTile, ModuleStatus } from './types';
 import { moduleStatus } from './types';
 
-function m(id: string, name: string, ui: ModuleTileDef['ui'], api: ModuleTileDef['api'], note?: string, feOnly?: boolean): ModuleTileDef {
-  return { id, name, ui, api, note, feOnly };
+function m(id: string, name: string, ui: ModuleTileDef['ui'], api: ModuleTileDef['api'], note?: string, feOnly?: boolean, meta?: Partial<ModuleTileDef>): ModuleTileDef {
+  return { id, name, ui, api, note, feOnly, ...meta };
 }
 
 interface Section {
@@ -20,17 +20,17 @@ const SECTIONS: Section[] = [
   {
     title: 'ITSM PILLARS',
     mods: [
-      m('t_inc', 'Incident Management', 'done', 'none', 'list · drawer · SLA bars · KB citations'),
-      m('t_war', 'Major Incident / War Room', 'done', 'none', 'clock · roster · comms · actions'),
-      m('t_prob', 'Problem Management', 'done', 'none', 'RCA drawer · status lifecycle'),
-      m('t_chg', 'Change Management', 'done', 'none', 'risk dial · factors · CAB brief'),
-      m('t_cab', 'CAB Calendar', 'done', 'none', 'windows + conflict flags'),
-      m('t_cmdb', 'CMDB / Assets', 'done', 'none', 'device data via sccm exists (mock)'),
-      m('t_catalog', 'Service Catalog', 'done', 'none', 'request tiles + submit'),
-      m('t_portal', 'Citizen Portal', 'done', 'none', 'localStorage round-trip only'),
-      m('t_oncall', 'On-call Rotation', 'done', 'none'),
-      m('t_phone', 'Phone / Telephony', 'done', 'none', 'scripted demo; no SIP · no server STT'),
-      m('t_dash', 'Dashboards & Metrics', 'done', 'partial', 'charts hardcoded; metrics polls live'),
+      m('t_inc', 'Incident Management', 'done', 'none', 'list · drawer · SLA bars · KB citations', false, { owner: 'ITSM Squad', effort: 'L', critical: true, sensitivity: 'sensitive' }),
+      m('t_war', 'Major Incident / War Room', 'done', 'none', 'clock · roster · comms · actions', false, { owner: 'ITSM Squad', effort: 'L', critical: true, sensitivity: 'sensitive' }),
+      m('t_prob', 'Problem Management', 'done', 'none', 'RCA drawer · status lifecycle', false, { owner: 'ITSM Squad', effort: 'M', critical: true, sensitivity: 'internal' }),
+      m('t_chg', 'Change Management', 'done', 'none', 'risk dial · factors · CAB brief', false, { owner: 'ITSM Squad', effort: 'L', critical: true, sensitivity: 'internal' }),
+      m('t_cab', 'CAB Calendar', 'done', 'none', 'windows + conflict flags', false, { owner: 'ITSM Squad', effort: 'M', sensitivity: 'internal' }),
+      m('t_cmdb', 'CMDB / Assets', 'done', 'none', 'device data via sccm exists (mock)', false, { owner: 'Integrations Squad', effort: 'L', critical: true, sensitivity: 'internal' }),
+      m('t_catalog', 'Service Catalog', 'done', 'none', 'request tiles + submit', false, { owner: 'Experience Squad', effort: 'M', sensitivity: 'internal' }),
+      m('t_portal', 'Citizen Portal', 'done', 'none', 'localStorage round-trip only', false, { owner: 'Experience Squad', effort: 'M', channel: true, sensitivity: 'pii' }),
+      m('t_oncall', 'On-call Rotation', 'done', 'none', undefined, false, { owner: 'ITSM Squad', effort: 'S', sensitivity: 'pii' }),
+      m('t_phone', 'Phone / Telephony', 'done', 'none', 'scripted demo; no SIP · no server STT', false, { owner: 'Experience Squad', effort: 'L', channel: true, sensitivity: 'pii' }),
+      m('t_dash', 'Dashboards & Metrics', 'done', 'partial', 'charts hardcoded; metrics polls live', false, { owner: 'Platform Squad', effort: 'M', sensitivity: 'internal' }),
     ],
   },
   {
@@ -77,6 +77,28 @@ const SECTIONS: Section[] = [
     ],
   },
   {
+    title: 'CHANNELS',
+    mods: [
+      m('t_console', 'Operator Web Console', 'done', 'done', 'the React SPA — primary surface', false, { channel: true, critical: true }),
+      m('t_apipub', 'REST API · /api/v1', 'done', 'done', 'FastAPI contract', false, { channel: true, critical: true, owner: 'Platform Squad' }),
+      m('t_emailin', 'Email-to-Ticket', 'none', 'none', 'inbound email → incident (to build)', false, { channel: true, effort: 'M', owner: 'Integrations Squad' }),
+      m('t_webhook', 'Inbound Webhooks', 'none', 'none', 'monitoring alerts → incident (to build)', false, { channel: true, effort: 'M', owner: 'Integrations Squad' }),
+      m('t_mobile', 'Mobile App', 'none', 'none', 'future', false, { channel: true, effort: 'L' }),
+    ],
+  },
+  {
+    title: 'EXTERNAL SYSTEMS',
+    mods: [
+      m('t_entra', 'Microsoft Entra ID', 'none', 'done', 'user auth · OIDC', false, { external: true, sensitivity: 'pii' }),
+      m('t_graph', 'Microsoft Graph', 'none', 'done', 'Intune devices · mail · approvals', false, { external: true, sensitivity: 'pii' }),
+      m('t_sp_ext', 'SharePoint', 'none', 'done', 'knowledge-base sync', false, { external: true, sensitivity: 'sensitive' }),
+      m('t_smtp', 'SMTP Relay', 'none', 'partial', 'alt email provider', false, { external: true }),
+      m('t_wl_ext', 'Oracle WebLogic', 'none', 'partial', 'runbook target · mock today', false, { external: true }),
+      m('t_ollama', 'Ollama', 'none', 'partial', 'alternate local LLM provider', false, { external: true, owner: 'AI Squad' }),
+      m('t_azure', 'Azure OpenAI', 'none', 'partial', 'opt-in frontier model', false, { external: true, owner: 'AI Squad', sensitivity: 'sensitive' }),
+    ],
+  },
+  {
     title: 'INFRASTRUCTURE',
     mods: [
       { id: 't_pg', name: 'PostgreSQL 15', ui: 'none', api: 'done', infra: true, note: 'primary store (:5493) · Alembic migrations' },
@@ -99,6 +121,25 @@ const SECTIONS: Section[] = [
     ],
   },
 ];
+
+/* Default overlay metadata per section so the overlay modes have full
+ * coverage without hand-tagging every module. */
+const DEFAULT_OWNER: Record<string, string> = {
+  'ITSM PILLARS': 'ITSM Squad',
+  'SHARED SERVICES (CROSS-MODULE)': 'Platform Squad',
+  'PLATFORM CORE': 'Platform Squad',
+  'INTEGRATION MODULES': 'Integrations Squad',
+  'CHANNELS': 'Experience Squad',
+  'EXTERNAL SYSTEMS': 'Vendor (3rd-party)',
+  'INFRASTRUCTURE': 'Platform Squad',
+  'DEMO / PRESENTER LAYER': 'Experience Squad',
+};
+for (const section of SECTIONS) {
+  for (const mod of section.mods) {
+    if (!mod.owner) mod.owner = DEFAULT_OWNER[section.title] ?? 'Unassigned';
+    if (!mod.sensitivity) mod.sensitivity = 'internal';
+  }
+}
 
 /* ── Grid layout ──────────────────────────────────────────────── */
 
@@ -206,6 +247,21 @@ export const MODULE_EDGES: ModuleEdgeDef[] = [
   me('me_voice_ttsbox', 't_voice', 't_ttsbox', 'synthesize'),
   me('me_wsmap_ttsbox', 't_wsmap', 't_ttsbox', 'narration'),
   me('me_trace_langfuse', 't_trace', 't_langfuse', 'trace export'),
+  /* Channels → work */
+  me('me_console_inc', 't_console', 't_inc', 'operate'),
+  me('me_api_inc', 't_apipub', 't_inc', 'REST'),
+  me('me_emailin_inc', 't_emailin', 't_inc', 'creates'),
+  me('me_webhook_inc', 't_webhook', 't_inc', 'alerts → inc'),
+  me('me_console_chat', 't_console', 't_chat', 'ask Compass'),
+  /* External systems */
+  me('me_entra_auth', 't_entra', 't_auth', 'OIDC'),
+  me('me_graph_sccm', 't_graph', 't_sccm', 'devices'),
+  me('me_graph_exch', 't_graph', 't_exch', 'mail · approvals'),
+  me('me_sp_sync', 't_sp_ext', 't_sp', 'document sync'),
+  me('me_smtp_exch', 't_smtp', 't_exch', 'relay'),
+  me('me_wl_target', 't_wl_ext', 't_wl', 'runbook target'),
+  me('me_ollama_chat', 't_ollama', 't_chat', 'alt provider'),
+  me('me_azure_chat', 't_azure', 't_chat', 'frontier opt-in'),
 ];
 
 /* Dev-time sanity: edge endpoints must be real modules. */

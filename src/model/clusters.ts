@@ -105,6 +105,18 @@ export const CLUSTER_TREE: ClusterTreeDef[] = [
     children: ['t_galaxy', 't_wsmap', 't_story', 't_vo', 't_autopilot', 't_ar'],
   },
   {
+    id: 'c_channels',
+    name: 'Channels',
+    accent: '#0d9488',
+    children: ['t_console', 't_apipub', 't_emailin', 't_webhook', 't_mobile'],
+  },
+  {
+    id: 'c_external',
+    name: 'External Systems',
+    accent: '#64748b',
+    children: ['t_entra', 't_graph', 't_sp_ext', 't_smtp', 't_wl_ext', 't_ollama', 't_azure'],
+  },
+  {
     id: 'c_infra',
     name: 'Infrastructure',
     accent: '#0891b2',
@@ -194,6 +206,13 @@ export const CLUSTER_EDGES: ClusterEdgeDef[] = [
   { id: 'ce_ai_infra', source: 'c_ai', target: 'c_infra', label: 'LLM · vectors · traces' },
   { id: 'ce_insight_infra', source: 'c_insight', target: 'c_infra', label: 'queries · artifacts' },
   { id: 'ce_seed_infra', source: 'c_seeding', target: 'c_infra', label: 'fixtures → Postgres' },
+  /* Channels (ingress) */
+  { id: 'ce_chan_itsm', source: 'c_channels', target: 'c_itsm', label: 'work enters', sh: 't', th: 'b' },
+  { id: 'ce_chan_ai', source: 'c_channels', target: 'c_ai', label: 'conversational ingress', sh: 't', th: 'b' },
+  /* External systems (boundary) */
+  { id: 'ce_ext_identity', source: 'c_external', target: 'c_identity', label: 'authN (Entra)' },
+  { id: 'ce_ext_integrations', source: 'c_external', target: 'c_integrations', label: 'devices · mail · docs' },
+  { id: 'ce_ext_ai', source: 'c_external', target: 'c_ai', label: 'frontier opt-in' },
 ];
 
 /* ── Agents working between clusters ──────────────────────────── */

@@ -8,8 +8,9 @@ import { POSTURE_NODES, POSTURE_EDGES } from './model/posture';
 import { READINESS_CARDS, READINESS_NODES, READINESS_EDGES } from './model/readiness';
 import { MASTER_NODES, MASTER_EDGES } from './model/master';
 import { TRACKER_TILES, TRACKER_NODES } from './model/modules';
+import { DEPLOY_NODES, DEPLOY_EDGES } from './model/deployment';
 
-type View = 'posture' | 'readiness' | 'master' | 'tracker' | 'clusters' | 'zoom';
+type View = 'posture' | 'readiness' | 'master' | 'tracker' | 'clusters' | 'zoom' | 'deployment';
 
 const VIEWS: { id: View; label: string; hint: string }[] = [
   { id: 'posture', label: 'System Posture', hint: 'End-system view — building components by readiness' },
@@ -17,7 +18,8 @@ const VIEWS: { id: View; label: string; hint: string }[] = [
   { id: 'master', label: 'Master Connected Map', hint: 'Surface → fixture → API → module → store, fully connected' },
   { id: 'tracker', label: 'Module Tracker', hint: 'Neutral inventory — every module and where it stands' },
   { id: 'clusters', label: 'Clusters', hint: 'Capability hierarchy — clusters within clusters, with rollup status' },
-  { id: 'zoom', label: 'Zoom Map', hint: 'Semantic zoom — big letters far out, click a bubble to dive in' },
+  { id: 'zoom', label: 'Zoom Map', hint: 'Semantic zoom · overlays · value-stream playback · export' },
+  { id: 'deployment', label: 'Deployment', hint: 'Runtime topology — docker stack + sovereign boundary' },
 ];
 
 const LEGEND: { label: string; light: { bg: string; border: string }; dark: { bg: string; border: string }; dashed?: boolean }[] = [
@@ -35,13 +37,29 @@ const VIEW_KEY = 'arch-map-view';
 
 export default function App() {
   const [view, setView] = useState<View>(() => {
+    // Permalink: #<view> wins, then last-used, then default.
+    const hash = window.location.hash.replace('#', '');
+    if (VIEWS.some((v) => v.id === hash)) return hash as View;
     const saved = localStorage.getItem(VIEW_KEY) as View | null;
     return saved && VIEWS.some((v) => v.id === saved) ? saved : 'master';
   });
 
   useEffect(() => {
     localStorage.setItem(VIEW_KEY, view);
+    if (window.location.hash.replace('#', '') !== view) {
+      window.history.replaceState(null, '', `#${view}`);
+    }
   }, [view]);
+
+  // Back/forward + shared links update the view.
+  useEffect(() => {
+    const onHash = () => {
+      const h = window.location.hash.replace('#', '');
+      if (VIEWS.some((v) => v.id === h)) setView(h as View);
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
   const [dark, setDark] = useState<boolean>(() => {
     const saved = localStorage.getItem(THEME_KEY);
     if (saved) return saved === 'dark';
@@ -148,6 +166,9 @@ export default function App() {
         )}
         {view === 'clusters' && <ClusterFlow />}
         {view === 'zoom' && <ZoomFlow />}
+        {view === 'deployment' && (
+          <ArchFlow nodes={DEPLOY_NODES} edges={DEPLOY_EDGES} kinds={['live', 'planned']} />
+        )}
       </div>
     </ThemeContext.Provider>
   );

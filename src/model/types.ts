@@ -60,6 +60,9 @@ export interface ReadinessRow {
 export type PartState = 'done' | 'partial' | 'none';
 export type ModuleStatus = 'implemented' | 'partial' | 'ui-only' | 'planned';
 
+export type Effort = 'S' | 'M' | 'L';
+export type Sensitivity = 'pii' | 'sensitive' | 'internal' | 'public';
+
 export interface ModuleTileDef {
   id: string;
   name: string;
@@ -74,6 +77,22 @@ export interface ModuleTileDef {
   /** Infrastructure service — single running/not state carried in `api`;
    *  the UI column is not applicable. */
   infra?: boolean;
+  /** External system outside the product boundary (Entra, Graph, …). */
+  external?: boolean;
+  /** Channel / entry point (portal, phone, email, …). */
+  channel?: boolean;
+
+  /* ── Overlay metadata (optional; drives the overlay colour modes) ── */
+  /** Owning team / squad. */
+  owner?: string;
+  /** Build size for to-build work. */
+  effort?: Effort;
+  /** Load-bearing vs. demo-only / nice-to-have. */
+  critical?: boolean;
+  /** Data sensitivity of what this module handles/stores. */
+  sensitivity?: Sensitivity;
+  /** Customer profiles that load this module (omit = all profiles). */
+  profiles?: string[];
 }
 
 /** Directed relation between two modules ("which module relates to what"). */
@@ -92,7 +111,8 @@ export interface PlacedTile extends ModuleTileDef {
 }
 
 export function moduleStatus(m: ModuleTileDef): ModuleStatus {
-  if (m.infra) {
+  if (m.infra || m.external) {
+    // Single state carried in `api`: integrated/running vs. not.
     if (m.api === 'done') return 'implemented';
     if (m.api === 'partial') return 'partial';
     return 'planned';

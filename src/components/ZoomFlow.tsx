@@ -10,7 +10,7 @@
  * Click a bubble to dive into it (camera fitBounds); click a module for
  * the inspector; "Full view" floats you back out.
  */
-import { memo, useMemo, useState } from 'react';
+import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -26,13 +26,49 @@ import {
   type NodeProps,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { toPng } from 'html-to-image';
 
 import { ModuleInspector, PILL_LABEL, Ports } from './nodes';
 import { useTheme } from '../theme';
 import { CLUSTER_TREE, aggregateCounts, type ClusterTreeDef } from '../model/clusters';
 import { MODULE_BY_ID, MODULE_EDGES } from '../model/modules';
 import { DB_DOMAINS, DB_TABLE_COUNT, TABLE_BY_ID, TABLE_TO_STATUS, type DbDomainDef, type TableStatus } from '../model/dbschema';
-import { moduleStatus, type ModuleTileDef } from '../model/types';
+import { STORIES } from '../model/stories';
+import { moduleStatus, type ModuleStatus, type ModuleTileDef } from '../model/types';
+
+/* ── Overlay modes (recolour module cards by a chosen dimension) ── */
+
+export type OverlayMode = 'status' | 'owner' | 'effort' | 'sensitivity';
+
+const OWNER_PALETTE = ['#e11d48', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#0ea5e9', '#64748b', '#d946ef'];
+function ownerColor(owner?: string): string {
+  if (!owner) return '#94a3b8';
+  let h = 0;
+  for (const c of owner) h = (h * 31 + c.charCodeAt(0)) | 0;
+  return OWNER_PALETTE[Math.abs(h) % OWNER_PALETTE.length];
+}
+const EFFORT_COLOR: Record<string, string> = { S: '#10b981', M: '#f59e0b', L: '#e11d48' };
+const SENS_COLOR: Record<string, string> = { pii: '#e11d48', sensitive: '#f59e0b', internal: '#3b82f6', public: '#10b981' };
+
+function overlayInfo(m: ModuleTileDef, overlay: OverlayMode, statusColor: string): { color: string; label: string } {
+  switch (overlay) {
+    case 'owner': return { color: ownerColor(m.owner), label: m.owner ?? 'Unassigned' };
+    case 'effort': return { color: m.effort ? EFFORT_COLOR[m.effort] : '#94a3b8', label: m.effort ? `${m.effort} effort` : 'sized: —' };
+    case 'sensitivity': return { color: m.sensitivity ? SENS_COLOR[m.sensitivity] : '#94a3b8', label: m.sensitivity ?? '—' };
+    default: return { color: statusColor, label: PILL_LABEL[moduleStatus(m)] };
+  }
+}
+
+interface ZoomCtxValue {
+  overlay: OverlayMode;
+  /** Module ids to dim (filter / story focus); null = none dimmed. */
+  dimmed: Set<string> | null;
+  /** Module id currently highlighted by story playback. */
+  highlight: string | null;
+}
+const ZoomCtx = createContext<ZoomCtxValue>({ overlay: 'status', dimmed: null, highlight: null });
+
+const MODULE_IDS = Object.keys(MODULE_BY_ID);
 
 /* ── Zoom bands ───────────────────────────────────────────────── */
 
@@ -177,17 +213,25 @@ const ZBubble = memo(({ data }: NodeProps) => {
 
 type ZModuleData = ModuleTileDef & { w: number; h: number };
 
-const ZModule = memo(({ data }: NodeProps) => {
+const ZModule = memo(({ id, data }: NodeProps) => {
   const d = data as unknown as ZModuleData;
   const zoom = useZoom();
   const theme = useTheme();
+  const { overlay, dimmed, highlight } = useContext(ZoomCtx);
   const far = zoom < FAR;
   const near = zoom >= NEAR;
   const status = moduleStatus(d);
   const pill = theme.tile.pill[status];
+  const info = overlayInfo(d, overlay, pill.fg);
+  const color = info.color;
+  const isStatus = overlay === 'status';
 
   const glyph = (s: 'done' | 'partial' | 'none') => (s === 'done' ? '✓' : s === 'partial' ? '◐' : '—');
-  const meta = d.infra ? 'service' : d.feOnly ? 'FE-only' : `UI ${glyph(d.ui)} · API ${glyph(d.api)}`;
+  const meta = d.infra ? 'service' : d.feOnly ? 'FE-only' : d.external ? 'external' : `UI ${glyph(d.ui)} · API ${glyph(d.api)}`;
+
+  const modId = id.replace('z__', '');
+  const dim = dimmed?.has(modId) ?? false;
+  const lit = highlight === modId;
 
   return (
     <div
@@ -197,24 +241,33 @@ const ZModule = memo(({ data }: NodeProps) => {
         height: d.h,
         borderRadius: 13,
         background: far
-          ? pill.fg
-          : `linear-gradient(150deg, ${pill.bg} 0%, ${pill.bg} 60%, ${pill.fg}${theme.dark ? '24' : '16'} 130%)`,
-        border: `1.5px solid ${pill.fg}${far ? '00' : '85'}`,
-        opacity: far ? 0.3 : 1,
+          ? color
+          : isStatus
+            ? `linear-gradient(150deg, ${pill.bg} 0%, ${pill.bg} 60%, ${color}${theme.dark ? '24' : '16'} 130%)`
+            : theme.dark ? '#141c2b' : '#ffffff',
+        borderTop: `1.5px solid ${color}${far ? '00' : '85'}`,
+        borderRight: `1.5px solid ${color}${far ? '00' : '85'}`,
+        borderBottom: `1.5px solid ${color}${far ? '00' : '85'}`,
+        borderLeft: `${isStatus ? 1.5 : 4}px solid ${color}${far ? '00' : isStatus ? '85' : 'ff'}`,
+        opacity: far ? 0.3 : dim ? 0.16 : 1,
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
         padding: '11px 13px',
         cursor: 'pointer',
+        transition: 'opacity 0.2s, box-shadow 0.2s, transform 0.2s',
+        transform: lit ? 'scale(1.05)' : 'none',
         boxShadow: far
           ? 'none'
-          : `inset 0 1px 0 ${theme.dark ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.55)'}, 0 10px 24px -15px ${pill.fg}${theme.dark ? 'aa' : '70'}`,
+          : lit
+            ? `0 0 0 3px ${color}, 0 16px 40px -10px ${color}`
+            : `inset 0 1px 0 ${theme.dark ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.55)'}, 0 10px 24px -15px ${color}${theme.dark ? 'aa' : '70'}`,
       }}
       title={d.name}
     >
-      {/* Header — status dot + name, left aligned */}
+      {/* Header — dot + name, left aligned */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, opacity: far ? 0 : 1, transition: 'opacity 0.3s' }}>
-        <span style={{ width: 8, height: 8, borderRadius: 999, marginTop: 4, background: pill.fg, flexShrink: 0, boxShadow: `0 0 8px ${pill.fg}99` }} />
+        <span style={{ width: 8, height: 8, borderRadius: 999, marginTop: 4, background: color, flexShrink: 0, boxShadow: `0 0 8px ${color}99` }} />
         <span
           style={{
             fontSize: 13,
@@ -231,7 +284,7 @@ const ZModule = memo(({ data }: NodeProps) => {
           {d.name}
         </span>
       </div>
-      {/* Footer — status pill + meta, fades in near */}
+      {/* Footer — overlay pill (+ UI/API meta in status mode), fades in near */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 7, opacity: near ? 1 : 0, transition: 'opacity 0.3s' }}>
         <span
           style={{
@@ -241,14 +294,17 @@ const ZModule = memo(({ data }: NodeProps) => {
             padding: '2px 8px',
             borderRadius: 999,
             background: theme.dark ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.85)',
-            color: pill.fg,
-            boxShadow: `inset 0 0 0 1px ${pill.fg}33`,
+            color,
+            boxShadow: `inset 0 0 0 1px ${color}33`,
             whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            maxWidth: '100%',
           }}
         >
-          {PILL_LABEL[status]}
+          {info.label}
         </span>
-        <span style={{ fontSize: 9, fontWeight: 600, color: theme.dark ? '#94a3b8' : '#64748b', whiteSpace: 'nowrap' }}>{meta}</span>
+        {isStatus && <span style={{ fontSize: 9, fontWeight: 600, color: theme.dark ? '#94a3b8' : '#64748b', whiteSpace: 'nowrap' }}>{meta}</span>}
       </div>
       <Ports />
     </div>
@@ -336,14 +392,51 @@ const LEGEND_ITEMS: { status: 'implemented' | 'partial' | 'ui-only' | 'planned' 
   { status: 'planned' },
 ];
 
-function ZoomLegend() {
+function ZoomLegend({
+  overlay,
+  statusFilter,
+  onToggleStatus,
+}: {
+  overlay: OverlayMode;
+  statusFilter: Set<ModuleStatus>;
+  onToggleStatus: (s: ModuleStatus) => void;
+}) {
   const theme = useTheme();
+
+  let title: string;
+  let rows: { color: string; label: string; status?: ModuleStatus }[];
+  if (overlay === 'status') {
+    title = 'Status · click to filter';
+    rows = LEGEND_ITEMS.map(({ status }) => ({ color: theme.tile.pill[status].fg, label: PILL_LABEL[status], status }));
+  } else if (overlay === 'owner') {
+    title = 'Owner';
+    const owners = Array.from(new Set(MODULE_IDS.map((id) => MODULE_BY_ID[id].owner).filter(Boolean))) as string[];
+    rows = owners.map((o) => ({ color: ownerColor(o), label: o }));
+  } else if (overlay === 'effort') {
+    title = 'Build effort';
+    rows = [
+      { color: EFFORT_COLOR.S, label: 'S — small' },
+      { color: EFFORT_COLOR.M, label: 'M — medium' },
+      { color: EFFORT_COLOR.L, label: 'L — large' },
+      { color: '#94a3b8', label: 'not sized' },
+    ];
+  } else {
+    title = 'Data sensitivity';
+    rows = [
+      { color: SENS_COLOR.pii, label: 'PII' },
+      { color: SENS_COLOR.sensitive, label: 'Sensitive' },
+      { color: SENS_COLOR.internal, label: 'Internal' },
+      { color: SENS_COLOR.public, label: 'Public' },
+    ];
+  }
+
   return (
     <div
       style={{
         position: 'absolute',
         bottom: 14,
         left: 14,
+        minWidth: 210,
         background: theme.canvas.panelBg,
         border: `1px solid ${theme.canvas.panelBorder}`,
         borderRadius: 12,
@@ -353,15 +446,20 @@ function ZoomLegend() {
       }}
     >
       <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase', color: theme.app.subtitle, marginBottom: 8 }}>
-        Module status
+        {title}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 18, rowGap: 6 }}>
-        {LEGEND_ITEMS.map(({ status }) => {
-          const pill = theme.tile.pill[status];
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 16, rowGap: 6 }}>
+        {rows.map((r, i) => {
+          const clickable = r.status !== undefined;
+          const muted = clickable && statusFilter.size > 0 && !statusFilter.has(r.status!);
           return (
-            <div key={status} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-              <span style={{ width: 11, height: 11, borderRadius: 4, background: pill.fg, boxShadow: `0 0 6px ${pill.fg}66`, flexShrink: 0 }} />
-              <span style={{ fontSize: 11, fontWeight: 600, color: theme.app.legendText }}>{PILL_LABEL[status]}</span>
+            <div
+              key={i}
+              onClick={clickable ? () => onToggleStatus(r.status!) : undefined}
+              style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: clickable ? 'pointer' : 'default', opacity: muted ? 0.38 : 1, userSelect: 'none' }}
+            >
+              <span style={{ width: 11, height: 11, borderRadius: 4, background: r.color, boxShadow: `0 0 6px ${r.color}66`, flexShrink: 0 }} />
+              <span style={{ fontSize: 11, fontWeight: 600, color: theme.app.legendText, whiteSpace: 'nowrap' }}>{r.label}</span>
             </div>
           );
         })}
@@ -371,15 +469,12 @@ function ZoomLegend() {
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <svg width="22" height="8" aria-hidden>
             <line x1="0" y1="4" x2="16" y2="4" stroke={theme.edge.neutral} strokeWidth="1.6" />
-            <path d={`M16 4 l-4 -2.5 v5 z`} fill={theme.edge.neutral} />
+            <path d="M16 4 l-4 -2.5 v5 z" fill={theme.edge.neutral} />
           </svg>
           relation
         </span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
           <span style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 700, color: theme.app.legendText }}>tbl</span> DB table
-        </span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-          <span style={{ fontSize: 11 }}>🔍</span> zoom in
         </span>
       </div>
     </div>
@@ -608,9 +703,14 @@ export function ZoomFlow() {
 function ZoomFlowInner() {
   const theme = useTheme();
   const rf = useReactFlow();
+  const wrapRef = useRef<HTMLDivElement | null>(null);
   const [inspect, setInspect] = useState<ModuleTileDef | null>(null);
   const [inspectTable, setInspectTable] = useState<(typeof TABLE_BY_ID)[string] | null>(null);
   const [showConnections, setShowConnections] = useState(true);
+  const [overlay, setOverlay] = useState<OverlayMode>('status');
+  const [statusFilter, setStatusFilter] = useState<Set<ModuleStatus>>(new Set());
+  const [story, setStory] = useState<{ id: string; step: number } | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const { nodes, rects } = useMemo(() => layoutZRoot(), []);
 
@@ -651,8 +751,66 @@ function ZoomFlowInner() {
     [nodes, band],
   );
 
+  /* ── Filter + story focus → dim set + highlight ── */
+  const activeStory = story ? STORIES.find((s) => s.id === story.id) ?? null : null;
+  const highlight = activeStory ? activeStory.steps[story!.step]?.module ?? null : null;
+  const dimmed = useMemo<Set<string> | null>(() => {
+    if (activeStory) {
+      const keep = new Set(activeStory.steps.map((s) => s.module));
+      return new Set(MODULE_IDS.filter((id) => !keep.has(id)));
+    }
+    if (statusFilter.size > 0) {
+      return new Set(MODULE_IDS.filter((id) => {
+        const m = MODULE_BY_ID[id];
+        return m && !statusFilter.has(moduleStatus(m));
+      }));
+    }
+    return null;
+  }, [activeStory, statusFilter]);
+
+  /* ── Story playback — advance + pan the camera per step ── */
+  useEffect(() => {
+    if (!activeStory || !story) return;
+    const stepDef = activeStory.steps[story.step];
+    if (!stepDef) return;
+    const rect = rects.get(`z__${stepDef.module}`);
+    if (rect) rf.setCenter(rect.x + rect.width / 2, rect.y + rect.height / 2, { zoom: 1.3, duration: 800 });
+    const t = window.setTimeout(() => {
+      setStory((prev) => (prev && prev.step + 1 < activeStory.steps.length ? { id: prev.id, step: prev.step + 1 } : null));
+    }, 3800);
+    return () => window.clearTimeout(t);
+  }, [activeStory, story, rects, rf]);
+
+  const stopStory = useCallback(() => {
+    setStory(null);
+    rf.fitView({ padding: 0.05, duration: 600 });
+  }, [rf]);
+
+  const exportPng = useCallback(async () => {
+    const pane = wrapRef.current?.querySelector('.react-flow') as HTMLElement | null;
+    if (!pane) return;
+    setExporting(true);
+    try {
+      const dataUrl = await toPng(pane, {
+        backgroundColor: theme.dark ? '#0b1120' : '#f7f8fa',
+        pixelRatio: 2,
+        filter: (node) => {
+          const el = node as HTMLElement;
+          return !el?.classList?.contains?.('react-flow__minimap') && !el?.classList?.contains?.('react-flow__controls');
+        },
+      });
+      const a = document.createElement('a');
+      a.download = 'aiops-zoom-map.png';
+      a.href = dataUrl;
+      a.click();
+    } finally {
+      setExporting(false);
+    }
+  }, [theme.dark]);
+
   return (
-    <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
+    <ZoomCtx.Provider value={{ overlay, dimmed, highlight }}>
+    <div ref={wrapRef} style={{ flex: 1, position: 'relative', minHeight: 0 }}>
       <ReactFlow
         nodes={displayNodes}
         edges={edges}
@@ -697,42 +855,58 @@ function ZoomFlowInner() {
         />
       </ReactFlow>
 
-      <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 6, alignItems: 'center', background: theme.canvas.panelBg, border: `1px solid ${theme.canvas.panelBorder}`, borderRadius: 10, padding: '6px 8px', boxShadow: theme.dark ? '0 1px 4px rgba(0,0,0,0.5)' : '0 1px 4px rgba(0,0,0,0.1)' }}>
-        <button
-          onClick={() => setShowConnections((s) => !s)}
-          style={{
-            fontSize: 11,
-            fontWeight: 600,
-            padding: '4px 12px',
-            borderRadius: 999,
-            cursor: 'pointer',
-            border: `1.5px solid ${showConnections ? theme.edge.neutral : theme.app.tabBorder}`,
-            background: showConnections ? `${theme.edge.neutral}22` : 'transparent',
-            color: showConnections ? theme.edge.neutral : theme.app.tabText,
-            textDecoration: showConnections ? 'none' : 'line-through',
-          }}
-        >
-          Connections
-        </button>
-        <button
-          onClick={() => rf.fitView({ padding: 0.05, duration: 700 })}
-          style={{ fontSize: 11, fontWeight: 600, padding: '4px 12px', borderRadius: 999, cursor: 'pointer', border: `1.5px solid ${theme.app.tabBorder}`, background: 'transparent', color: theme.app.tabText }}
-        >
-          ⤺ Full view
-        </button>
-        <span style={{ fontSize: 10.5, color: theme.app.subtitle, paddingInline: 4 }}>
-          click a card to dive in · zoom reveals detail + relations
-        </span>
+      {/* Top-right — overlay colour mode + tools */}
+      <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: 700, background: theme.canvas.panelBg, border: `1px solid ${theme.canvas.panelBorder}`, borderRadius: 10, padding: '6px 8px', boxShadow: theme.dark ? '0 1px 4px rgba(0,0,0,0.5)' : '0 1px 4px rgba(0,0,0,0.1)' }}>
+        <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, color: theme.app.subtitle }}>Colour</span>
+        {(['status', 'owner', 'effort', 'sensitivity'] as OverlayMode[]).map((o) => (
+          <button key={o} onClick={() => setOverlay(o)} style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 999, cursor: 'pointer', textTransform: 'capitalize', border: `1.5px solid ${overlay === o ? theme.app.tabActiveBorder : theme.app.tabBorder}`, background: overlay === o ? theme.app.tabActiveBg : 'transparent', color: overlay === o ? theme.app.tabActiveText : theme.app.tabText }}>{o}</button>
+        ))}
+        <span style={{ width: 1, height: 18, background: theme.canvas.panelBorder }} />
+        <button onClick={() => setShowConnections((s) => !s)} style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 999, cursor: 'pointer', border: `1.5px solid ${showConnections ? theme.edge.neutral : theme.app.tabBorder}`, background: showConnections ? `${theme.edge.neutral}22` : 'transparent', color: showConnections ? theme.edge.neutral : theme.app.tabText, textDecoration: showConnections ? 'none' : 'line-through' }}>Connections</button>
+        <button onClick={exportPng} disabled={exporting} style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 999, cursor: 'pointer', border: `1.5px solid ${theme.app.tabBorder}`, background: 'transparent', color: theme.app.tabText }}>{exporting ? '…' : '⤓ PNG'}</button>
+        <button onClick={() => rf.fitView({ padding: 0.05, duration: 700 })} style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 999, cursor: 'pointer', border: `1.5px solid ${theme.app.tabBorder}`, background: 'transparent', color: theme.app.tabText }}>⤺ Full</button>
       </div>
+
+      {/* Top-centre — value-stream story playback */}
+      <div style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 6, alignItems: 'center', background: theme.canvas.panelBg, border: `1px solid ${theme.canvas.panelBorder}`, borderRadius: 999, padding: '5px 10px', boxShadow: theme.dark ? '0 1px 4px rgba(0,0,0,0.5)' : '0 1px 4px rgba(0,0,0,0.1)' }}>
+        <span style={{ fontSize: 10.5, fontWeight: 700, color: theme.app.subtitle }}>▶ Play story</span>
+        {STORIES.map((s) => (
+          <button key={s.id} title={s.title} onClick={() => setStory({ id: s.id, step: 0 })} style={{ width: 24, height: 24, borderRadius: 999, cursor: 'pointer', fontSize: 11, fontWeight: 800, border: `1.5px solid ${story?.id === s.id ? s.tone : theme.app.tabBorder}`, background: story?.id === s.id ? s.tone : 'transparent', color: story?.id === s.id ? '#fff' : theme.app.tabText }}>{s.id}</button>
+        ))}
+      </div>
+
+      {/* Story caption banner */}
+      {activeStory && story && (
+        <div style={{ position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)', width: 'min(680px, 78vw)', background: theme.inspector.bg, border: `1.5px solid ${activeStory.tone}`, borderRadius: 14, padding: '12px 16px', boxShadow: '0 10px 34px rgba(0,0,0,0.32)', display: 'flex', alignItems: 'center', gap: 14, zIndex: 5 }}>
+          <span style={{ flexShrink: 0, width: 30, height: 30, borderRadius: 999, background: activeStory.tone, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 13 }}>{activeStory.id}</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: activeStory.tone, marginBottom: 2 }}>{activeStory.title} · {story.step + 1}/{activeStory.steps.length}</div>
+            <div style={{ fontSize: 12.5, color: theme.inspector.text, lineHeight: 1.4 }}>{activeStory.steps[story.step]?.caption}</div>
+          </div>
+          <button onClick={stopStory} style={{ flexShrink: 0, fontSize: 11, fontWeight: 600, padding: '5px 12px', borderRadius: 999, cursor: 'pointer', border: `1.5px solid ${theme.app.tabBorder}`, background: 'transparent', color: theme.app.tabText }}>■ Stop</button>
+        </div>
+      )}
 
       {inspect ? (
         <ModuleInspector mod={inspect} onClose={() => setInspect(null)} />
       ) : inspectTable ? (
         <TableInspector table={inspectTable} onClose={() => setInspectTable(null)} />
       ) : (
-        <ZoomLegend />
+        <ZoomLegend
+          overlay={overlay}
+          statusFilter={statusFilter}
+          onToggleStatus={(s) =>
+            setStatusFilter((prev) => {
+              const n = new Set(prev);
+              if (n.has(s)) n.delete(s);
+              else n.add(s);
+              return n;
+            })
+          }
+        />
       )}
     </div>
+    </ZoomCtx.Provider>
   );
 }
 
@@ -749,11 +923,14 @@ function TableInspector({ table, onClose }: { table: (typeof TABLE_BY_ID)[string
         <span style={{ fontSize: 10, fontWeight: 600, color: theme.app.subtitle }}>{table.domain}</span>
         <button onClick={onClose} style={{ marginLeft: 'auto', border: 'none', background: 'none', cursor: 'pointer', color: theme.app.subtitle, fontSize: 14 }}>✕</button>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: table.note ? 7 : 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 7 }}>
         <span style={{ width: 8, height: 8, borderRadius: 999, background: pill.fg, flexShrink: 0 }} />
         <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 14, fontWeight: 700, color: theme.inspector.title }}>{table.name}</span>
       </div>
-      {table.note && <div style={{ fontSize: 11.5, color: theme.inspector.text, lineHeight: 1.45 }}>{table.note}</div>}
+      {table.note && <div style={{ fontSize: 11.5, color: theme.inspector.text, lineHeight: 1.45, marginBottom: 7 }}>{table.note}</div>}
+      <div style={{ fontSize: 10.5, color: theme.app.subtitle }}>
+        owned by <span style={{ fontWeight: 700, color: theme.inspector.text }}>{MODULE_BY_ID[table.owner]?.name ?? table.owner}</span>
+      </div>
     </div>
   );
 }
