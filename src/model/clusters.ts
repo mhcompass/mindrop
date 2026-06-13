@@ -108,7 +108,20 @@ export const CLUSTER_TREE: ClusterTreeDef[] = [
     id: 'c_infra',
     name: 'Infrastructure',
     accent: '#0891b2',
-    children: ['t_pg', 't_qdrant', 't_minio', 't_ttsbox', 't_llm', 't_langfuse', 't_compose'],
+    children: [
+      {
+        id: 'c_infra_data', name: 'Data Stores', accent: '#0891b2',
+        children: ['t_pg', 't_qdrant', 't_minio'],
+      },
+      {
+        id: 'c_infra_runtime', name: 'Runtime & Models', accent: '#0d9488',
+        children: ['t_llm', 't_ttsbox'],
+      },
+      {
+        id: 'c_infra_ops', name: 'Platform & Ops', accent: '#475569',
+        children: ['t_compose', 't_langfuse'],
+      },
+    ],
   },
 ];
 
