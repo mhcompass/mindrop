@@ -1,5 +1,5 @@
 /**
- * Three-week delivery plan for a team of three engineers. Plain-language
+ * Delivery plan for a team of three engineers (about 2-2.5 weeks). Plain-language
  * scope: what gets built, grouped by outcome, with day estimates, a
  * week-by-week breakdown, what is intentionally left out, and the one
  * hard dependency. Estimates come from the development-plan workstreams.
@@ -83,11 +83,10 @@ export const PLAN_AVAILABLE: AvailableGroup[] = [
   },
 ];
 
-export const PLAN_TEAM = { engineers: 3, weeks: 3, daysPerWeek: 5, utilization: 0.8 };
-export const PLAN_CAPACITY = Math.round(
-  PLAN_TEAM.engineers * PLAN_TEAM.weeks * PLAN_TEAM.daysPerWeek * PLAN_TEAM.utilization,
-); // 36
+export const PLAN_TEAM = { engineers: 3, daysPerWeek: 5 };
 export const PLAN_BUFFER = 2; // reserved for integration + a demo run-through
+/** Deliberate timeline framing — 3 engineers at ~12 working days each. */
+export const PLAN_TIMELINE = 'about 2 to 2.5 weeks';
 
 export const PLAN_GROUPS: PlanGroup[] = [
   {
@@ -149,4 +148,7 @@ export const PLAN_COMMITTED = PLAN_GROUPS.reduce(
   (a, g) => a + g.items.reduce((b, it) => b + it.days, 0),
   0,
 );
+/** Total person-days (planned work + buffer) and the per-engineer span. */
+export const PLAN_EFFORT = PLAN_COMMITTED + PLAN_BUFFER;
+export const PLAN_DAYS_PER_ENGINEER = Math.round(PLAN_EFFORT / PLAN_TEAM.engineers);
 

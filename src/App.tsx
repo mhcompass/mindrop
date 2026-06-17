@@ -25,7 +25,7 @@ const VIEWS: { id: View; label: string; hint: string }[] = [
   { id: 'zoom', label: 'Zoom Map', hint: 'Semantic zoom · overlays · value-stream playback · export' },
   { id: 'agents', label: 'Agents', hint: 'Every AI agent — purpose, tools, and what is implemented vs not' },
   { id: 'checklist', label: 'Checklist', hint: 'Core functionality — delivered vs to deliver / modify' },
-  { id: 'plan', label: '3-Week Plan', hint: 'Three-week delivery scope for 3 engineers' },
+  { id: 'plan', label: 'Delivery Plan', hint: 'Delivery scope for 3 engineers — about 2–2.5 weeks' },
   { id: 'deployment', label: 'Deployment', hint: 'Runtime topology — docker stack + sovereign boundary' },
 ];
 

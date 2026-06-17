@@ -4,10 +4,12 @@ import { useTheme } from '../theme';
 import {
   PLAN_AVAILABLE,
   PLAN_BUFFER,
-  PLAN_CAPACITY,
   PLAN_COMMITTED,
+  PLAN_DAYS_PER_ENGINEER,
+  PLAN_EFFORT,
   PLAN_GROUPS,
   PLAN_TEAM,
+  PLAN_TIMELINE,
   type PlanGroup,
 } from '../model/plan3';
 
@@ -19,18 +21,18 @@ export function PlanBoard() {
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '26px 28px 60px' }}>
         {/* Title + overview */}
         <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.3, color: theme.app.title, margin: '0 0 8px' }}>
-          Three-week delivery plan — 3 engineers
+          Delivery plan — 3 engineers, about 2–2.5 weeks
         </h1>
         <p style={{ fontSize: 13.5, lineHeight: 1.6, color: theme.card.rowText, margin: '0 0 22px' }}>
-          The system already provides the functionality listed below today. The goal for these three weeks is to make
-          the demo run on the live system rather than a scripted front-end story, and to complete the automation that
-          links an incident through to a scheduled change.
+          The system already provides the functionality listed below today. The goal of this work is to make the demo
+          run on the live system rather than a scripted front-end story, and to complete the automation that links an
+          incident through to a scheduled change.
         </p>
 
         {/* Available today */}
         <H2 theme={theme}>Available today (can be enabled now)</H2>
         <p style={{ fontSize: 12.5, lineHeight: 1.55, color: theme.tile.note, margin: '0 0 14px' }}>
-          These already work and can be switched on or demonstrated immediately, before any of the three-week work
+          These already work and can be switched on or demonstrated immediately, before any of the delivery work
           below. Items marked <TestingPill theme={theme} /> were built in the last few days and need a short final
           test pass before they are demo-ready.
         </p>
@@ -53,22 +55,24 @@ export function PlanBoard() {
 
         <div style={{ height: 12 }} />
 
-        {/* The three-week plan */}
-        <H2 theme={theme}>The three-week plan</H2>
+        {/* The plan at a glance */}
+        <H2 theme={theme}>The plan at a glance</H2>
         <div style={{ border: `1px solid ${theme.tile.border}`, borderRadius: 10, overflow: 'hidden', marginBottom: 22 }}>
           <Row theme={theme} label="Team" value={`${PLAN_TEAM.engineers} engineers`} first />
-          <Row theme={theme} label="Duration" value={`${PLAN_TEAM.weeks} weeks`} />
           <Row
             theme={theme}
-            label="Available time"
-            value={`about ${PLAN_CAPACITY} working days (3 people × 15 days, allowing for meetings and review)`}
+            label="Effort"
+            value={`${PLAN_EFFORT} person-days (${PLAN_COMMITTED} days of work + ${PLAN_BUFFER} days buffer for integration and a demo run-through)`}
           />
-          <Row theme={theme} label="Planned work" value={`${PLAN_COMMITTED} days`} />
-          <Row theme={theme} label="Reserved buffer" value={`${PLAN_BUFFER} days (integration + a demo run-through)`} />
+          <Row
+            theme={theme}
+            label="Timeline"
+            value={`${PLAN_TIMELINE} (about ${PLAN_DAYS_PER_ENGINEER} working days per engineer)`}
+          />
         </div>
 
         {/* What we'll deliver */}
-        <H2 theme={theme}>What these three weeks add (can then be enabled)</H2>
+        <H2 theme={theme}>What this work adds (can then be enabled)</H2>
         <p style={{ fontSize: 12.5, lineHeight: 1.55, color: theme.tile.note, margin: '0 0 16px' }}>
           Each of these becomes a functionality you can switch on, the same way as the list above. Day estimates are
           shown on the right.
