@@ -9,6 +9,7 @@ import { READINESS_CARDS, READINESS_NODES, READINESS_EDGES } from './model/readi
 import { MASTER_NODES, MASTER_EDGES } from './model/master';
 import { TRACKER_TILES, TRACKER_NODES } from './model/modules';
 import { DEPLOY_NODES, DEPLOY_EDGES } from './model/deployment';
+import { BUILD_STAMP } from './model/stamp';
 
 type View = 'posture' | 'readiness' | 'master' | 'tracker' | 'clusters' | 'zoom' | 'deployment';
 
@@ -132,6 +133,25 @@ export default function App() {
                 </span>
               );
             })}
+            <span
+              title={`Model reconciled with the yc-itsm codebase on ${BUILD_STAMP.date} · ${BUILD_STAMP.scope}`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 10.5,
+                fontWeight: 700,
+                padding: '5px 10px',
+                borderRadius: 999,
+                border: `1px solid ${theme.app.tabBorder}`,
+                background: theme.app.tabBg,
+                color: theme.app.subtitle,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <span style={{ width: 7, height: 7, borderRadius: 999, background: '#82b366', flexShrink: 0 }} />
+              as of {BUILD_STAMP.date} · {BUILD_STAMP.profile}
+            </span>
             <button
               onClick={() => setDark((d) => !d)}
               title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
