@@ -150,39 +150,3 @@ export const PLAN_COMMITTED = PLAN_GROUPS.reduce(
   0,
 );
 
-export interface PlanWeek {
-  week: number;
-  theme: string;
-  lanes: { eng: string; items: string[] }[];
-}
-export const PLAN_WEEKS: PlanWeek[] = [
-  {
-    week: 1, theme: 'Make it live',
-    lanes: [
-      { eng: 'Engineer A — Records', items: ['Data seeding tool + reset', 'Move storyline to real records', 'Incidents live'] },
-      { eng: 'Engineer B — Workflow', items: ['Recurring-incident grouping (start)'] },
-      { eng: 'Engineer C — Screens + data', items: ['Metrics aggregation queries'] },
-    ],
-  },
-  {
-    week: 2, theme: 'Connect the workflow',
-    lanes: [
-      { eng: 'Engineer A — Records', items: ['Maintenance window + conflict checks'] },
-      { eng: 'Engineer B — Workflow', items: ['Recurring-incident grouping (finish)', 'Change risk scoring'] },
-      { eng: 'Engineer C — Screens + data', items: ['Major-incident backend'] },
-    ],
-  },
-  {
-    week: 3, theme: 'Finish and rehearse',
-    lanes: [
-      { eng: 'Engineer A — Records', items: ['Integration + testing'] },
-      { eng: 'Engineer B — Workflow', items: ['Automatic CAB summary'] },
-      { eng: 'Engineer C — Screens + data', items: ['Live executive summary', 'Demo run-through'] },
-    ],
-  },
-];
-
-export const PLAN_DEPENDENCY =
-  'These features use the on-premise language model (the GB10 appliance). It is not running in the current ' +
-  'environment, so confirm it is available before starting — otherwise the automated steps fall back to their ' +
-  'scripted versions.';

@@ -6,10 +6,8 @@ import {
   PLAN_BUFFER,
   PLAN_CAPACITY,
   PLAN_COMMITTED,
-  PLAN_DEPENDENCY,
   PLAN_GROUPS,
   PLAN_TEAM,
-  PLAN_WEEKS,
   type PlanGroup,
 } from '../model/plan3';
 
@@ -79,41 +77,6 @@ export function PlanBoard() {
           <Group key={g.id} group={g} />
         ))}
 
-        {/* Week by week */}
-        <H2 theme={theme}>Week by week</H2>
-        <p style={{ fontSize: 12.5, lineHeight: 1.55, color: theme.tile.note, margin: '0 0 14px' }}>
-          The three engineers work in parallel streams. Each week ends with something that can be shown.
-        </p>
-        {PLAN_WEEKS.map((wk) => (
-          <div key={wk.week} style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 750, color: theme.app.title, marginBottom: 7 }}>
-              Week {wk.week}: {wk.theme}
-            </div>
-            <div style={{ border: `1px solid ${theme.tile.border}`, borderRadius: 10, overflow: 'hidden' }}>
-              {wk.lanes.map((lane, i) => (
-                <div
-                  key={lane.eng}
-                  style={{
-                    display: 'flex',
-                    gap: 14,
-                    padding: '9px 14px',
-                    borderTop: i === 0 ? 'none' : `1px solid ${theme.tile.border}`,
-                    background: theme.tile.bg,
-                  }}
-                >
-                  <div style={{ flex: '0 0 190px', fontSize: 12, fontWeight: 700, color: theme.card.rowText }}>
-                    {lane.eng}
-                  </div>
-                  <div style={{ flex: 1, fontSize: 12.5, color: theme.card.rowText }}>{lane.items.join(' · ')}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-
-        {/* Dependency */}
-        <H2 theme={theme}>One dependency to confirm first</H2>
-        <p style={{ fontSize: 12.5, lineHeight: 1.6, color: theme.card.rowText, margin: 0 }}>{PLAN_DEPENDENCY}</p>
       </div>
     </div>
   );
