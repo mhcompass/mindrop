@@ -32,7 +32,9 @@ export function PlanBoard() {
         {/* Available today */}
         <H2 theme={theme}>Available today (can be enabled now)</H2>
         <p style={{ fontSize: 12.5, lineHeight: 1.55, color: theme.tile.note, margin: '0 0 14px' }}>
-          These already work and can be switched on or demonstrated immediately, before any of the three-week work below.
+          These already work and can be switched on or demonstrated immediately, before any of the three-week work
+          below. Items marked <TestingPill theme={theme} /> were built in the last few days and need a short final
+          test pass before they are demo-ready.
         </p>
         {PLAN_AVAILABLE.map((group) => (
           <div key={group.group} style={{ marginBottom: 16 }}>
@@ -41,7 +43,10 @@ export function PlanBoard() {
               {group.items.map((it, i) => (
                 <div key={i} style={{ display: 'flex', gap: 9, fontSize: 12.5, lineHeight: 1.45, color: theme.card.rowText }}>
                   <span aria-hidden style={{ color: theme.card.marks['✓'], flexShrink: 0, fontWeight: 800 }}>✓</span>
-                  <span>{it}</span>
+                  <span style={{ flex: 1 }}>
+                    {it.text}
+                    {it.testing && <TestingPill theme={theme} />}
+                  </span>
                 </div>
               ))}
             </div>
@@ -65,9 +70,13 @@ export function PlanBoard() {
         </div>
 
         {/* What we'll deliver */}
-        <H2 theme={theme}>What we will deliver</H2>
-        {PLAN_GROUPS.map((g, i) => (
-          <Group key={g.id} group={g} index={i + 1} />
+        <H2 theme={theme}>What these three weeks add (can then be enabled)</H2>
+        <p style={{ fontSize: 12.5, lineHeight: 1.55, color: theme.tile.note, margin: '0 0 16px' }}>
+          Each of these becomes a functionality you can switch on, the same way as the list above. Day estimates are
+          shown on the right.
+        </p>
+        {PLAN_GROUPS.map((g) => (
+          <Group key={g.id} group={g} />
         ))}
 
         {/* Week by week */}
@@ -110,28 +119,48 @@ export function PlanBoard() {
   );
 }
 
-function Group({ group, index }: { group: PlanGroup; index: number }) {
+function Group({ group }: { group: PlanGroup }) {
   const theme = useTheme();
   const total = group.items.reduce((a, it) => a + it.days, 0);
+  const planMark = theme.dark ? '#60a5fa' : '#2563eb';
   return (
-    <div style={{ marginBottom: 22 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 5 }}>
-        <h3 style={{ fontSize: 15, fontWeight: 750, color: theme.app.title, margin: 0 }}>
-          {index}. {group.title}
-        </h3>
+    <div style={{ marginBottom: 18 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 4 }}>
+        <div style={{ fontSize: 13, fontWeight: 750, color: theme.app.title }}>{group.title}</div>
         <span style={{ fontSize: 12, fontWeight: 650, color: theme.tile.note, flexShrink: 0 }}>{total} days</span>
       </div>
-      <p style={{ fontSize: 12.5, lineHeight: 1.6, color: theme.card.rowText, margin: '0 0 9px' }}>{group.summary}</p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingLeft: 2 }}>
+      <p style={{ fontSize: 12, lineHeight: 1.55, color: theme.tile.note, margin: '0 0 8px' }}>{group.summary}</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
         {group.items.map((it) => (
-          <div key={it.ref} style={{ display: 'flex', alignItems: 'baseline', gap: 9, fontSize: 12.5, color: theme.card.rowText }}>
-            <span aria-hidden style={{ color: theme.tile.note, flexShrink: 0 }}>•</span>
+          <div key={it.ref} style={{ display: 'flex', alignItems: 'baseline', gap: 9, fontSize: 12.5, lineHeight: 1.45, color: theme.card.rowText }}>
+            <span aria-hidden style={{ color: planMark, flexShrink: 0, fontWeight: 800 }}>+</span>
             <span style={{ flex: 1 }}>{it.title}</span>
             <span style={{ fontSize: 11.5, color: theme.tile.note, flexShrink: 0 }}>{it.days}d</span>
           </div>
         ))}
       </div>
     </div>
+  );
+}
+
+function TestingPill({ theme }: { theme: ReturnType<typeof useTheme> }) {
+  const c = theme.tile.pill['ui-only'];
+  return (
+    <span
+      style={{
+        marginLeft: 7,
+        fontSize: 9.5,
+        fontWeight: 750,
+        padding: '1px 6px',
+        borderRadius: 999,
+        background: c.bg,
+        color: c.fg,
+        whiteSpace: 'nowrap',
+        verticalAlign: 'middle',
+      }}
+    >
+      final testing
+    </span>
   );
 }
 

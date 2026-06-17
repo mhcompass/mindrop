@@ -21,44 +21,64 @@ export interface PlanGroup {
   items: PlanItem[];
 }
 
-/** Functionality that already works and can be enabled / demonstrated now. */
+/** Functionality that already works and can be enabled / demonstrated now.
+ *  `testing: true` = built in the last few days; needs a final QA pass. */
+export interface AvailableItem {
+  text: string;
+  testing?: boolean;
+}
 export interface AvailableGroup {
   group: string;
-  items: string[];
+  items: AvailableItem[];
 }
 export const PLAN_AVAILABLE: AvailableGroup[] = [
   {
     group: 'Service management (ITIL)',
     items: [
-      'Incident management — create, triage, assign, work-note and transition, with SLA timers and knowledge citations',
-      'Problem management — records, root cause and lifecycle, linked to their incidents',
-      'Change management — risk classification with a CAB approval gate on high-risk changes',
-      'CAB calendar — scheduled changes with conflict flags',
-      'Service catalog and citizen portal — submit a request and track it',
-      'Asset inventory (CMDB) — assets and sites with filtering',
-      'Cross-practice linking — connect incidents, problems and changes',
+      { text: 'Incident management — create, triage, assign, work-note and transition, with SLA timers and knowledge citations', testing: true },
+      { text: 'Problem management — records, root cause and lifecycle, linked to their incidents', testing: true },
+      { text: 'Change management — risk classification with a CAB approval gate on high-risk changes', testing: true },
+      { text: 'CAB calendar — scheduled changes with conflict flags', testing: true },
+      { text: 'Service catalog and citizen portal — submit a request and track it', testing: true },
+      { text: 'Asset inventory (CMDB) — assets and sites with filtering', testing: true },
+      { text: 'Cross-practice linking — connect incidents, problems and changes', testing: true },
     ],
   },
   {
     group: 'Assistant and knowledge',
     items: [
-      'Compass assistant — chat with tool use across all of the above',
-      'Knowledge base with citations — folder-scoped question answering with sources',
-      'MyLocker document workspace — templates and English/Arabic document analysis',
-      'Reports — natural-language and scheduled reports',
-      'Voice — speech-to-text and text-to-speech in English and Arabic',
-      'Execution trace — step-by-step view of each assistant turn',
+      { text: 'Compass assistant — chat with tool use across all of the above' },
+      { text: 'Knowledge base with citations — folder-scoped question answering with sources' },
+      { text: 'MyLocker document workspace — templates, with new English/Arabic document analysis', testing: true },
+      { text: 'Reports — natural-language and scheduled reports' },
+      { text: 'Voice — speech-to-text and text-to-speech in English and Arabic', testing: true },
+      { text: 'Execution trace — step-by-step view of each assistant turn' },
     ],
   },
   {
     group: 'Platform and operations',
     items: [
-      'Multi-tenant profiles and branding — switch between Default, Dubai Police and Ministry of Education',
-      'Governance — assistant kill-switch and full audit log',
-      'Approvals — email approve/reject with secure tokens',
-      'Directory operations — user lookup, group audit and password reset (mock or connected directory)',
-      'Device and compliance views (SCCM, sample data)',
-      'Operator web console and REST API',
+      { text: 'Multi-tenant profiles and branding — switch between Default, Dubai Police and Ministry of Education, with data kept separate per tenant', testing: true },
+      { text: 'Governance — assistant kill-switch and full audit log' },
+      { text: 'Approvals — email approve/reject with secure tokens' },
+      { text: 'Directory operations — user lookup, group audit and password reset' },
+      { text: 'Device and compliance views (SCCM, sample data)' },
+      { text: 'Operator web console and REST API' },
+    ],
+  },
+  {
+    group: 'System integrations',
+    items: [
+      { text: 'Microsoft Entra ID — single sign-on (OIDC)' },
+      { text: 'Microsoft Graph — devices, mail and approvals' },
+      { text: 'Active Directory / LDAP — directory operations' },
+      { text: 'Microsoft Exchange — mailboxes and outbound email' },
+      { text: 'SharePoint — knowledge-base document sync' },
+      { text: 'Microsoft SCCM — device and patch management (sample data today)' },
+      { text: 'Oracle WebLogic — application runbook operations (mock today)' },
+      { text: 'SMTP — email relay' },
+      { text: 'On-premise language model (GB10), with optional Azure OpenAI for frontier models' },
+      { text: 'Speech services — Whisper (speech-to-text) and Kokoro / Piper (text-to-speech)' },
     ],
   },
 ];
@@ -79,9 +99,9 @@ export const PLAN_GROUPS: PlanGroup[] = [
       'demo data into Postgres and resets it between sessions, so the same walkthrough can be shown without the ' +
       'scripted layer.',
     items: [
-      { ref: 'A4', title: 'Data seeding tool (load demo data into Postgres) + reset script', days: 3 },
-      { ref: 'A5', title: 'Move the scripted storyline onto real database records', days: 2 },
-      { ref: 'B1', title: 'Incidents working end to end in the demo flow', days: 3 },
+      { ref: 'A4', title: 'One-click seeding and reset of the demo data', days: 3 },
+      { ref: 'A5', title: 'The whole demo running on real database records', days: 2 },
+      { ref: 'B1', title: 'Incidents working end to end on the live system', days: 3 },
     ],
   },
   {
@@ -94,10 +114,10 @@ export const PLAN_GROUPS: PlanGroup[] = [
       'the proposed maintenance window for conflicts. The result is one continuous flow from incident to ' +
       'scheduled change, with no manual routing.',
     items: [
-      { ref: 'B5', title: 'Group recurring incidents into a problem (with a known-errors record)', days: 5 },
-      { ref: 'B6', title: 'Score a change’s risk from history, traffic and dependencies', days: 4 },
-      { ref: 'B7', title: 'Draft the change-advisory (CAB) summary automatically', days: 3 },
-      { ref: 'B8', title: 'Suggest a safe maintenance window and flag conflicts', days: 3 },
+      { ref: 'B5', title: 'Automatic grouping of recurring incidents into a single problem', days: 5 },
+      { ref: 'B6', title: 'Automatic change risk scoring from history, traffic and dependencies', days: 4 },
+      { ref: 'B7', title: 'Auto-drafted change-advisory (CAB) summary', days: 3 },
+      { ref: 'B8', title: 'Maintenance-window conflict checking and safe-window suggestion', days: 3 },
     ],
   },
   {
@@ -108,8 +128,8 @@ export const PLAN_GROUPS: PlanGroup[] = [
       'incident and its communications log — and replaces the scripted summary with one the assistant ' +
       'regenerates from the actual state of the incident.',
     items: [
-      { ref: 'B2', title: 'Major-incident backend: tables + persisted communications log', days: 4 },
-      { ref: 'B3', title: 'Live executive summary, regenerated from the incident state', days: 3 },
+      { ref: 'B2', title: 'Major-incident war room backed by live data and a real communications log', days: 4 },
+      { ref: 'B3', title: 'Executive summary regenerated live from the incident state', days: 3 },
     ],
   },
   {
@@ -120,7 +140,7 @@ export const PLAN_GROUPS: PlanGroup[] = [
       'numbers instead of fixed charts, and reserves time at the end for integration testing and a full ' +
       'demo run-through.',
     items: [
-      { ref: 'A1', title: 'Metrics aggregation queries behind the dashboards', days: 4 },
+      { ref: 'A1', title: 'Dashboards showing live metrics (mean time to resolve, SLA, ticket volume)', days: 4 },
     ],
   },
 ];
