@@ -21,6 +21,48 @@ export interface PlanGroup {
   items: PlanItem[];
 }
 
+/** Functionality that already works and can be enabled / demonstrated now. */
+export interface AvailableGroup {
+  group: string;
+  items: string[];
+}
+export const PLAN_AVAILABLE: AvailableGroup[] = [
+  {
+    group: 'Service management (ITIL)',
+    items: [
+      'Incident management — create, triage, assign, work-note and transition, with SLA timers and knowledge citations',
+      'Problem management — records, root cause and lifecycle, linked to their incidents',
+      'Change management — risk classification with a CAB approval gate on high-risk changes',
+      'CAB calendar — scheduled changes with conflict flags',
+      'Service catalog and citizen portal — submit a request and track it',
+      'Asset inventory (CMDB) — assets and sites with filtering',
+      'Cross-practice linking — connect incidents, problems and changes',
+    ],
+  },
+  {
+    group: 'Assistant and knowledge',
+    items: [
+      'Compass assistant — chat with tool use across all of the above',
+      'Knowledge base with citations — folder-scoped question answering with sources',
+      'MyLocker document workspace — templates and English/Arabic document analysis',
+      'Reports — natural-language and scheduled reports',
+      'Voice — speech-to-text and text-to-speech in English and Arabic',
+      'Execution trace — step-by-step view of each assistant turn',
+    ],
+  },
+  {
+    group: 'Platform and operations',
+    items: [
+      'Multi-tenant profiles and branding — switch between Default, Dubai Police and Ministry of Education',
+      'Governance — assistant kill-switch and full audit log',
+      'Approvals — email approve/reject with secure tokens',
+      'Directory operations — user lookup, group audit and password reset (mock or connected directory)',
+      'Device and compliance views (SCCM, sample data)',
+      'Operator web console and REST API',
+    ],
+  },
+];
+
 export const PLAN_TEAM = { engineers: 3, weeks: 3, daysPerWeek: 5, utilization: 0.8 };
 export const PLAN_CAPACITY = Math.round(
   PLAN_TEAM.engineers * PLAN_TEAM.weeks * PLAN_TEAM.daysPerWeek * PLAN_TEAM.utilization,
@@ -117,33 +159,6 @@ export const PLAN_WEEKS: PlanWeek[] = [
       { eng: 'Engineer B — Workflow', items: ['Automatic CAB summary'] },
       { eng: 'Engineer C — Screens + data', items: ['Live executive summary', 'Demo run-through'] },
     ],
-  },
-];
-
-export interface PlanDeferral {
-  title: string;
-  why: string;
-}
-export const PLAN_DEFERRED: PlanDeferral[] = [
-  {
-    title: 'Arabic phone channel (call → transcription → assistant → spoken reply → ticket)',
-    why: 'The strongest single feature for the region, but it needs a telephony decision and a voice specialist (about 11 days). Record a short clip for the deck now and build it in the next phase.',
-  },
-  {
-    title: 'Real audit replay of assistant decisions',
-    why: 'Valuable for compliance (about 6 days). Show the current seeded version now and make it real in a following phase.',
-  },
-  {
-    title: 'Citizen portal round-trip and extra intake channels (email, webhooks)',
-    why: 'The operator demo does not depend on these, so they add scope without changing the core story.',
-  },
-  {
-    title: 'Connecting real external systems (directory, device management, WebLogic)',
-    why: 'Mock data is indistinguishable in the demo; connecting the real systems is post-sale work.',
-  },
-  {
-    title: 'Predictive SLA-breach alerts and on-demand Arabic translation',
-    why: 'Useful refinements, but not on the critical path for these three weeks.',
   },
 ];
 

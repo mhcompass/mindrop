@@ -2,10 +2,10 @@ import type { ReactNode } from 'react';
 
 import { useTheme } from '../theme';
 import {
+  PLAN_AVAILABLE,
   PLAN_BUFFER,
   PLAN_CAPACITY,
   PLAN_COMMITTED,
-  PLAN_DEFERRED,
   PLAN_DEPENDENCY,
   PLAN_GROUPS,
   PLAN_TEAM,
@@ -23,14 +23,36 @@ export function PlanBoard() {
         <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.3, color: theme.app.title, margin: '0 0 8px' }}>
           Three-week delivery plan — 3 engineers
         </h1>
-        <p style={{ fontSize: 13.5, lineHeight: 1.6, color: theme.card.rowText, margin: '0 0 16px' }}>
-          The goal for these three weeks is to make the demo run on the live system rather than a scripted front-end
-          story, and to complete the automation that links an incident through to a scheduled change. Most of the
-          screens already exist; this work connects them to real data and the assistant.
+        <p style={{ fontSize: 13.5, lineHeight: 1.6, color: theme.card.rowText, margin: '0 0 22px' }}>
+          The system already provides the functionality listed below today. The goal for these three weeks is to make
+          the demo run on the live system rather than a scripted front-end story, and to complete the automation that
+          links an incident through to a scheduled change.
         </p>
 
-        {/* At a glance */}
-        <div style={{ border: `1px solid ${theme.tile.border}`, borderRadius: 10, overflow: 'hidden', marginBottom: 26 }}>
+        {/* Available today */}
+        <H2 theme={theme}>Available today (can be enabled now)</H2>
+        <p style={{ fontSize: 12.5, lineHeight: 1.55, color: theme.tile.note, margin: '0 0 14px' }}>
+          These already work and can be switched on or demonstrated immediately, before any of the three-week work below.
+        </p>
+        {PLAN_AVAILABLE.map((group) => (
+          <div key={group.group} style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 13, fontWeight: 750, color: theme.app.title, marginBottom: 7 }}>{group.group}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              {group.items.map((it, i) => (
+                <div key={i} style={{ display: 'flex', gap: 9, fontSize: 12.5, lineHeight: 1.45, color: theme.card.rowText }}>
+                  <span aria-hidden style={{ color: theme.card.marks['✓'], flexShrink: 0, fontWeight: 800 }}>✓</span>
+                  <span>{it}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        <div style={{ height: 12 }} />
+
+        {/* The three-week plan */}
+        <H2 theme={theme}>The three-week plan</H2>
+        <div style={{ border: `1px solid ${theme.tile.border}`, borderRadius: 10, overflow: 'hidden', marginBottom: 22 }}>
           <Row theme={theme} label="Team" value={`${PLAN_TEAM.engineers} engineers`} first />
           <Row theme={theme} label="Duration" value={`${PLAN_TEAM.weeks} weeks`} />
           <Row
@@ -77,18 +99,6 @@ export function PlanBoard() {
                 </div>
               ))}
             </div>
-          </div>
-        ))}
-
-        {/* Not included */}
-        <H2 theme={theme}>Not included in these three weeks</H2>
-        <p style={{ fontSize: 12.5, lineHeight: 1.55, color: theme.tile.note, margin: '0 0 12px' }}>
-          These are deliberately left out to keep the scope realistic. None of them block the demo.
-        </p>
-        {PLAN_DEFERRED.map((d, i) => (
-          <div key={i} style={{ marginBottom: 11 }}>
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: theme.tile.name, marginBottom: 2 }}>{d.title}</div>
-            <div style={{ fontSize: 12.5, lineHeight: 1.5, color: theme.tile.note }}>{d.why}</div>
           </div>
         ))}
 
