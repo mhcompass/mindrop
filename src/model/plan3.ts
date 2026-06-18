@@ -11,6 +11,8 @@ export interface PlanItem {
   title: string;
   /** Delivery days (build + per-item test). */
   days: number;
+  /** Capability domain (matches the Supported-today group names). */
+  domain: string;
 }
 
 export interface PlanGroup {
@@ -98,9 +100,9 @@ export const PLAN_GROUPS: PlanGroup[] = [
       'demo data into Postgres and resets it between sessions, so the same walkthrough can be shown without the ' +
       'scripted layer.',
     items: [
-      { ref: 'A4', title: 'One-click seeding and reset of the demo data', days: 3 },
-      { ref: 'A5', title: 'The whole demo running on real database records', days: 2 },
-      { ref: 'B1', title: 'Incidents working end to end on the live system', days: 3 },
+      { ref: 'A4', title: 'One-click seeding and reset of the demo data', days: 3, domain: 'Platform and operations' },
+      { ref: 'A5', title: 'The whole demo running on real database records', days: 2, domain: 'Service management (ITIL)' },
+      { ref: 'B1', title: 'Incidents working end to end on the live system', days: 3, domain: 'Service management (ITIL)' },
     ],
   },
   {
@@ -113,10 +115,10 @@ export const PLAN_GROUPS: PlanGroup[] = [
       'the proposed maintenance window for conflicts. The result is one continuous flow from incident to ' +
       'scheduled change, with no manual routing.',
     items: [
-      { ref: 'B5', title: 'Automatic grouping of recurring incidents into a single problem', days: 5 },
-      { ref: 'B6', title: 'Automatic change risk scoring from history, traffic and dependencies', days: 4 },
-      { ref: 'B7', title: 'Auto-drafted change-advisory (CAB) summary', days: 3 },
-      { ref: 'B8', title: 'Maintenance-window conflict checking and safe-window suggestion', days: 3 },
+      { ref: 'B5', title: 'Automatic grouping of recurring incidents into a single problem', days: 5, domain: 'Service management (ITIL)' },
+      { ref: 'B6', title: 'Automatic change risk scoring from history, traffic and dependencies', days: 4, domain: 'Service management (ITIL)' },
+      { ref: 'B7', title: 'Auto-drafted change-advisory (CAB) summary', days: 3, domain: 'Assistant and knowledge' },
+      { ref: 'B8', title: 'Maintenance-window conflict checking and safe-window suggestion', days: 3, domain: 'Service management (ITIL)' },
     ],
   },
   {
@@ -127,8 +129,8 @@ export const PLAN_GROUPS: PlanGroup[] = [
       'incident and its communications log — and replaces the scripted summary with one the assistant ' +
       'regenerates from the actual state of the incident.',
     items: [
-      { ref: 'B2', title: 'Major-incident war room backed by live data and a real communications log', days: 4 },
-      { ref: 'B3', title: 'Executive summary regenerated live from the incident state', days: 3 },
+      { ref: 'B2', title: 'Major-incident war room backed by live data and a real communications log', days: 4, domain: 'Service management (ITIL)' },
+      { ref: 'B3', title: 'Executive summary regenerated live from the incident state', days: 3, domain: 'Assistant and knowledge' },
     ],
   },
   {
@@ -139,7 +141,7 @@ export const PLAN_GROUPS: PlanGroup[] = [
       'numbers instead of fixed charts, and reserves time at the end for integration testing and a full ' +
       'demo run-through.',
     items: [
-      { ref: 'A1', title: 'Dashboards showing live metrics (mean time to resolve, SLA, ticket volume)', days: 4 },
+      { ref: 'A1', title: 'Dashboards showing live metrics (mean time to resolve, SLA, ticket volume)', days: 4, domain: 'Platform and operations' },
     ],
   },
 ];

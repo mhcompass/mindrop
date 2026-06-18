@@ -9,6 +9,15 @@ export function CapabilitiesBoard() {
   const soonCount = PLAN_GROUPS.reduce((a, g) => a + g.items.length, 0);
   const planMark = theme.dark ? '#60a5fa' : '#2563eb';
 
+  // Split the 2-week additions by capability domain (same domains as the
+  // Supported-today list), in that order.
+  const soonByDomain = PLAN_AVAILABLE.map((g) => g.group)
+    .map((domain) => ({
+      domain,
+      items: PLAN_GROUPS.flatMap((g) => g.items).filter((it) => it.domain === domain),
+    }))
+    .filter((d) => d.items.length > 0);
+
   return (
     <div style={{ flex: 1, minHeight: 0, overflow: 'auto', background: theme.app.bg }}>
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '26px 28px 60px' }}>
@@ -57,12 +66,11 @@ export function CapabilitiesBoard() {
           With 3 engineers over {PLAN_TIMELINE}, the following capabilities can be added and then enabled the same way
           as the list above.
         </p>
-        {PLAN_GROUPS.map((group) => (
-          <div key={group.id} style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 13, fontWeight: 750, color: theme.app.title, marginBottom: 3 }}>{group.title}</div>
-            <p style={{ fontSize: 12, lineHeight: 1.55, color: theme.tile.note, margin: '0 0 8px' }}>{group.summary}</p>
+        {soonByDomain.map((d) => (
+          <div key={d.domain} style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 13, fontWeight: 750, color: theme.app.title, marginBottom: 7 }}>{d.domain}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-              {group.items.map((it) => (
+              {d.items.map((it) => (
                 <div key={it.ref} style={{ display: 'flex', gap: 9, fontSize: 12.5, lineHeight: 1.45, color: theme.card.rowText }}>
                   <span aria-hidden style={{ color: planMark, flexShrink: 0, fontWeight: 800 }}>+</span>
                   <span style={{ flex: 1 }}>{it.title}</span>
