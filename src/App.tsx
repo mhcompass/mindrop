@@ -6,6 +6,7 @@ import { ZoomFlow } from './components/ZoomFlow';
 import { AgentsBoard } from './components/AgentsBoard';
 import { ChecklistBoard } from './components/ChecklistBoard';
 import { PlanBoard } from './components/PlanBoard';
+import { CapabilitiesBoard } from './components/CapabilitiesBoard';
 import { ThemeContext, LIGHT, DARK } from './theme';
 import { POSTURE_NODES, POSTURE_EDGES } from './model/posture';
 import { READINESS_CARDS, READINESS_NODES, READINESS_EDGES } from './model/readiness';
@@ -14,7 +15,7 @@ import { TRACKER_TILES, TRACKER_NODES } from './model/modules';
 import { DEPLOY_NODES, DEPLOY_EDGES } from './model/deployment';
 import { BUILD_STAMP } from './model/stamp';
 
-type View = 'posture' | 'readiness' | 'master' | 'tracker' | 'clusters' | 'zoom' | 'agents' | 'checklist' | 'plan' | 'deployment';
+type View = 'posture' | 'readiness' | 'master' | 'tracker' | 'clusters' | 'zoom' | 'agents' | 'checklist' | 'capabilities' | 'plan' | 'deployment';
 
 const VIEWS: { id: View; label: string; hint: string }[] = [
   { id: 'posture', label: 'System Posture', hint: 'End-system view — building components by readiness' },
@@ -25,6 +26,7 @@ const VIEWS: { id: View; label: string; hint: string }[] = [
   { id: 'zoom', label: 'Zoom Map', hint: 'Semantic zoom · overlays · value-stream playback · export' },
   { id: 'agents', label: 'Agents', hint: 'Every AI agent — purpose, tools, and what is implemented vs not' },
   { id: 'checklist', label: 'Checklist', hint: 'Core functionality — delivered vs to deliver / modify' },
+  { id: 'capabilities', label: 'Capabilities', hint: 'What we support today and what is possible within ~2 weeks' },
   { id: 'plan', label: 'Delivery Plan', hint: 'Delivery scope for 3 engineers — about 2–2.5 weeks' },
   { id: 'deployment', label: 'Deployment', hint: 'Runtime topology — docker stack + sovereign boundary' },
 ];
@@ -130,7 +132,7 @@ export default function App() {
           </nav>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto', flexWrap: 'wrap' }}>
-            {view !== 'tracker' && view !== 'clusters' && view !== 'zoom' && view !== 'agents' && view !== 'checklist' && view !== 'plan' && LEGEND.map((l) => {
+            {view !== 'tracker' && view !== 'clusters' && view !== 'zoom' && view !== 'agents' && view !== 'checklist' && view !== 'plan' && view !== 'capabilities' && LEGEND.map((l) => {
               const c = dark ? l.dark : l.light;
               return (
                 <span key={l.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10.5, color: theme.app.legendText }}>
@@ -194,6 +196,7 @@ export default function App() {
         {view === 'zoom' && <ZoomFlow />}
         {view === 'agents' && <AgentsBoard />}
         {view === 'checklist' && <ChecklistBoard />}
+        {view === 'capabilities' && <CapabilitiesBoard />}
         {view === 'plan' && <PlanBoard />}
         {view === 'deployment' && (
           <ArchFlow nodes={DEPLOY_NODES} edges={DEPLOY_EDGES} kinds={['live', 'planned']} />
