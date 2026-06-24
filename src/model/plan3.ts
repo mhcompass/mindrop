@@ -5,6 +5,16 @@
  * hard dependency. Estimates come from the development-plan workstreams.
  */
 
+/** The four capability domains — the grouping shared by the Capabilities
+ *  board, the Delivery Plan, and the Roadmap cross-references. */
+export const CAPABILITY_DOMAINS = [
+  'Service management (ITIL)',
+  'Assistant and knowledge',
+  'Platform and operations',
+  'System integrations',
+] as const;
+export type CapabilityDomain = (typeof CAPABILITY_DOMAINS)[number];
+
 export interface PlanItem {
   /** Development-plan reference (A1, B5, …). */
   ref: string;
@@ -12,7 +22,7 @@ export interface PlanItem {
   /** Delivery days (build + per-item test). */
   days: number;
   /** Capability domain (matches the Supported-today group names). */
-  domain: string;
+  domain: CapabilityDomain;
 }
 
 export interface PlanGroup {

@@ -1,0 +1,34 @@
+# Mindrop team tracker — SPA (nginx) + tiny state API, on non-conventional,
+# non-overlapping ports:
+#   web  → http://localhost:46720   (the app)
+#   api  → http://localhost:46721   (state service; also proxied at /api)
+# These avoid every yc-itsm port (5493, 6333/6334, 9000/9001, 8421, 3847)
+# and everything else currently listening on this host.
+name: mindrop-tracker
+
+services:
+  api:
+    build: ./server
+    container_name: mindrop-tracker-api
+    environment:
+      PORT: "46721"
+      DATA_DIR: /data
+    volumes:
+      - mindrop_tracker_data:/data
+    ports:
+      - "46721:46721"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mindrop-tracker-web
+    depends_on:
+      - api
+    ports:
+      - "46720:46720"
+    restart: unless-stopped
+
+volumes:
+  mindrop_tracker_data:

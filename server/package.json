@@ -1,0 +1,14 @@
+{
+  "name": "mindrop-tracker-api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Small local state service for the Mindrop team tracker — JSON-file store of per-deliverable status/assignee overrides.",
+  "main": "index.mjs",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

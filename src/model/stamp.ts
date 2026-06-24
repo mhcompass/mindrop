@@ -6,9 +6,9 @@
  */
 export const BUILD_STAMP = {
   /** Date the model was last reconciled with the codebase (ISO). */
-  date: '2026-06-17',
+  date: '2026-06-21',
   /** Active deployment profile the stamp reflects. */
   profile: 'moe',
   /** One-line summary of what's landed as of this stamp. */
-  scope: 'ITIL slices 1–8 · multi-tenant profiling · EN/AR analysis-language',
+  scope: 'ITIL slices 1–8 · multi-tenant profiling · EN/AR locker · Fleet Operations · dual-admin approvals · governance toggle',
 };

@@ -872,7 +872,7 @@ function ZoomFlowInner() {
         },
       });
       const a = document.createElement('a');
-      a.download = 'aiops-zoom-map.png';
+      a.download = 'mindrop-zoom-map.png';
       a.href = dataUrl;
       a.click();
     } finally {

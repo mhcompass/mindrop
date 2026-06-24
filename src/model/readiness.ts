@@ -1,6 +1,9 @@
 /**
- * Module Readiness & Build Plan — ✓ / ◐ / ✗ per pillar.
- * Transcribed from draw.io page 2 "Module Readiness & Build Plan".
+ * Module Readiness & Build Plan — ✓ done · ◐ partial · ✗ not built, per
+ * pillar. Reconciled with the live codebase: the ITIL records engine
+ * (Incident/Problem/Change/CMDB/Portal) and multi-tenant profiling have
+ * shipped, so the pillars are now backend-live; the remaining ✗/◐ rows are
+ * the genuinely-open work, aligned with the Roadmap phases.
  */
 import type { ArchNodeDef, ArchEdgeDef, ReadinessCardDef, ReadinessRow, Status } from './types';
 
@@ -9,18 +12,17 @@ function r(m: ReadinessRow['m'], t: string): ReadinessRow {
 }
 
 export const READINESS_CARDS: ReadinessCardDef[] = [
-  /* ── Row 1 — ITSM core pillars ── */
+  /* ── Row 1 — ITSM core pillars (now records-engine live) ── */
   {
-    id: 'cInc', title: 'Incident Management', tone: 'seeded', x: 40, y: 96, w: 390, h: 214,
+    id: 'cInc', title: 'Incident Management', tone: 'live', x: 40, y: 96, w: 390, h: 214,
     rows: [
       r('✓', 'Frontend — list, filters, SLA bars, detail drawer'),
-      r('✓', 'Type contracts API-shaped (Incident · Timeline · KbCitation)'),
-      r('✓', 'Seeded demo data (7 incidents) + deep links'),
-      r('✗', 'Backend module — routes · schemas · services · tools'),
-      r('✗', 'DB models + Alembic migration'),
-      r('✗', 'CRUD + filter / search / pagination API'),
-      r('✗', 'Server-side SLA engine + breach prediction'),
-      r('✗', 'Create / edit forms + mutations (React Query)'),
+      r('✓', 'Backend records engine — routes · schemas · services'),
+      r('✓', 'DB models + Alembic migrations (live records)'),
+      r('✓', 'CRUD + filters · by-number lookup · stats API'),
+      r('✓', 'SLA timers + breach → admin notify + sla_breached event'),
+      r('✓', 'Create / transition / assign / worklog · agent tools'),
+      r('✗', 'Predictive breach scoring server-side (client-side today)'),
     ],
   },
   {
@@ -29,58 +31,54 @@ export const READINESS_CARDS: ReadinessCardDef[] = [
       r('✓', 'War-room UI — clock, roster, sites, comms, actions'),
       r('✓', 'MajorIncident type contract'),
       r('◐', 'Comms posting — local state only, not persisted'),
-      r('✗', 'Backend module + persistence'),
-      r('✗', 'Live comms stream (SSE / WebSocket)'),
-      r('✗', 'Exec-briefing regeneration via LLM'),
-      r('✗', 'Auto-paging from on-call rotation'),
+      r('✗', 'Backend module + persistence (comms log) — Plan B2'),
+      r('✗', 'Live comms stream (SSE)'),
+      r('✗', 'Exec-briefing regenerated live via LLM — Plan B3'),
     ],
   },
   {
-    id: 'cProb', title: 'Problem Management', tone: 'seeded', x: 860, y: 96, w: 390, h: 214,
+    id: 'cProb', title: 'Problem Management', tone: 'live', x: 860, y: 96, w: 390, h: 214,
     rows: [
       r('✓', 'UI — list, KPIs, RCA drawer, status lifecycle'),
-      r('✓', 'Cross-link UI (incidents ↔ problem ↔ change)'),
-      r('◐', 'Types — local to ProblemsPage; move to src/types'),
-      r('✗', 'Backend module + DB models'),
+      r('✓', 'Backend records engine + DB models'),
+      r('✓', 'Cross-links INC↔PRB↔CHG↔CI (ticket_links · /links)'),
+      r('✓', 'Agent tools — create_problem · link_records'),
+      r('◐', 'Auto recurrence → problem promotion (links live; detection scripted) — Plan B5'),
       r('✗', 'Known-error + workaround model (ITIL)'),
-      r('✗', 'Cluster-detection → problem promotion API'),
-      r('✗', 'Postmortem linkage (types already in case-vault)'),
     ],
   },
   {
-    id: 'cChg', title: 'Change Management + CAB', tone: 'seeded', x: 1270, y: 96, w: 390, h: 214,
+    id: 'cChg', title: 'Change Management + CAB', tone: 'live', x: 1270, y: 96, w: 390, h: 214,
     rows: [
       r('✓', 'UI — change list, risk dial + explainer, CAB calendar'),
-      r('✓', 'Seeded changes + conflict flags'),
-      r('◐', 'Approvals — generic approvals API live, not wired to CAB'),
-      r('✗', 'Backend module + DB models'),
-      r('✗', 'Risk-scoring service (factors → score)'),
-      r('✗', 'Maintenance-window conflict detection'),
-      r('✗', 'CAB brief generation (LLM) persisted on record'),
+      r('✓', 'Backend records + DB models'),
+      r('✓', 'Change-risk model + CAB approval gate (live on records)'),
+      r('✓', 'CAB calendar on real records (cab_window) + conflict flags'),
+      r('◐', 'Full auto risk-scoring from history/traffic/deps — Plan B6'),
+      r('✗', 'CAB brief auto-generated (LLM) + window auto-pick — Plan B7/B8'),
     ],
   },
 
-  /* ── Row 2 — supporting ── */
+  /* ── Row 2 — supporting (now backed) ── */
   {
-    id: 'cCmdb', title: 'CMDB / Assets', tone: 'seeded', x: 40, y: 330, w: 390, h: 200,
+    id: 'cCmdb', title: 'CMDB / Assets', tone: 'live', x: 40, y: 330, w: 390, h: 200,
     rows: [
       r('✓', 'Asset catalog UI + CI site drawer'),
-      r('✓', 'Seeded sites / CIs linked from incident drawer'),
-      r('◐', 'Device data — sccm module live (mock / Graph / admin svc)'),
-      r('✗', 'CI model + relationships in Postgres'),
+      r('✓', 'assets table · /assets + /sites API'),
+      r('◐', 'Device data — sccm module live (mock default; Graph/admin)'),
+      r('◐', 'Fleet Operations — bulk SCCM UI + approval gating shipped'),
       r('✗', 'CI ↔ incident impact API'),
       r('✗', 'Discovery / sync pipeline'),
     ],
   },
   {
-    id: 'cPortal', title: 'Citizen Portal + Service Catalog', tone: 'seeded', x: 450, y: 330, w: 390, h: 200,
+    id: 'cPortal', title: 'Citizen Portal + Service Catalog', tone: 'live', x: 450, y: 330, w: 390, h: 200,
     rows: [
-      r('✓', 'Portal + catalog UI (separate citizen shell)'),
-      r('◐', 'Submitted requests — localStorage round-trip only'),
-      r('✗', 'Backend module (requests, catalog items)'),
-      r('✗', 'Portal ↔ incident round-trip API'),
-      r('✗', 'Status notifications (email via exchange module)'),
-      r('✗', 'SLA + approver data from server'),
+      r('✓', 'Portal + catalog UI (citizen shell)'),
+      r('✓', 'catalog_items · /catalog · submit → service_request'),
+      r('✓', 'my-requests live — round-trip to records'),
+      r('✗', 'Status notifications round-trip (email via exchange)'),
+      r('◐', 'SLA + approver data from server'),
     ],
   },
   {
@@ -89,20 +87,19 @@ export const READINESS_CARDS: ReadinessCardDef[] = [
       r('✓', '10 dashboard instances + library + deep links'),
       r('✓', 'Home KPI strip computed from seeds'),
       r('◐', 'Metrics polls (settings) — live API'),
-      r('✗', 'Aggregation endpoints — MTTR · SLA · volumes'),
+      r('✗', 'Aggregation endpoints — MTTR · SLA · volumes — Plan A1'),
       r('✗', 'Chart series wired to metrics API (inline arrays today)'),
-      r('✗', 'Single source of truth — dashboards can contradict seeds'),
     ],
   },
   {
-    id: 'cVoice', title: 'Voice & Phone Channel', tone: 'seeded', x: 1270, y: 330, w: 390, h: 200,
+    id: 'cVoice', title: 'Voice & Phone Channel', tone: 'live', x: 1270, y: 330, w: 390, h: 200,
     rows: [
       r('✓', 'TTS service + /tts/synthesize + admin config (live)'),
       r('✓', 'Voice mode — mic → chat (mode=voice) → TTS'),
+      r('✓', 'Server-side STT (Spark Whisper) · EN + AR'),
       r('✓', 'Per-agent voices (galaxy voice_id) · EN + AR'),
       r('◐', 'Phone-bridge UI — scripted demo, no live call'),
       r('✗', 'Real telephony ingress (SIP / IVR)'),
-      r('✗', 'Server-side STT (Whisper service)'),
     ],
   },
 
@@ -111,10 +108,9 @@ export const READINESS_CARDS: ReadinessCardDef[] = [
     id: 'cChat', title: 'Compass Chat & Agent Core', tone: 'live', x: 40, y: 574, w: 390, h: 170,
     rows: [
       r('✓', 'Chat + agent tool orchestration'),
-      r('✓', 'Conversations CRUD'),
-      r('✓', 'Trace capture + visualization'),
-      r('✓', 'Actions + approval flows'),
-      r('✓', 'Profile loader (CUSTOMER_PROFILE)'),
+      r('✓', 'Conversations CRUD · trace capture + visualization'),
+      r('✓', 'Actions + approvals (dual-admin · bypass · email tokens)'),
+      r('✓', 'Multi-tenant profiles — runtime switch · schema-per-tenant'),
     ],
   },
   {
@@ -123,16 +119,16 @@ export const READINESS_CARDS: ReadinessCardDef[] = [
       r('✓', 'RAG ingest + vector search (Qdrant)'),
       r('✓', 'Runbook indexer + document processors'),
       r('✓', 'SharePoint connector'),
-      r('◐', 'Incident KB citations — seeded on incidents today; wire to retrieval at intake when incidents module lands'),
+      r('✓', 'Incident KB citations wired at intake (records engine live)'),
     ],
   },
   {
     id: 'cLocker', title: 'Locker · Reports · Galaxy · Governance', tone: 'live', x: 860, y: 574, w: 390, h: 170,
     rows: [
-      r('✓', 'Locker folders + templates (postmortem panel)'),
+      r('✓', 'Locker folders + templates + EN/AR analysis-language'),
       r('✓', 'Reports + scheduled reports (MinIO)'),
       r('✓', 'Galaxy REST + SSE pulses'),
-      r('◐', 'Governance — kill-switch UI live; approval policies + replay decisions are seeded client-side'),
+      r('◐', 'Governance — kill-switch + module-toggle live; policies/replay seeded'),
     ],
   },
   {
@@ -140,34 +136,34 @@ export const READINESS_CARDS: ReadinessCardDef[] = [
     rows: [
       r('✓', 'Story script (6 stories) + beacon stepper'),
       r('✓', 'Workspace map narrated playback (TTS-synced)'),
-      r('✗', 'Beacon fixes — off-script check + take-me-back URL'),
-      r('✗', 'Beacon voiceover + autopilot mode'),
+      r('✓', 'Galaxy per-planet voiceovers'),
+      r('✗', 'Story-mode — 2 known bugs · autopilot mode'),
       r('✗', 'Arabic narrations / i18n of demo copy'),
     ],
   },
 
-  /* ── Bottom — target shape ── */
+  /* ── Bottom — what shipped + what's left ── */
   {
-    id: 'tgtAnat', title: 'modules/incidents — anatomy (one pattern, five new modules)', tone: 'plan', x: 40, y: 800, w: 520, h: 330,
+    id: 'tgtAnat', title: 'modules/* — the pattern that shipped (replicated across five modules)', tone: 'live', x: 40, y: 800, w: 520, h: 330,
     rows: [
-      r('·', 'module.py — registration + feature flags via profiles/<name>.yaml'),
-      r('·', 'routes.py — /api/v1/incidents · /api/v1/major-incidents'),
-      r('·', 'schemas.py — mirror frontend types 1:1 (contract already frozen in src/data/seededIncidents.ts — keep field names)'),
-      r('·', 'services.py — SLA math · cluster merge · breach prediction'),
-      r('·', 'tools.py — agent tools: classify_incident · match_pattern · merge_tickets (names already shown in CompassConsoleStrip)'),
-      r('·', 'prompts.py — triage + exec-briefing prompts'),
-      r('·', 'Same skeleton → modules/problems · modules/changes · modules/cmdb · modules/portal'),
+      r('✓', 'module.py — registration + feature flags via profiles/<name>.yaml'),
+      r('✓', 'routes.py — /api/v1/incidents · problems · changes · cmdb · catalog'),
+      r('✓', 'schemas.py — contracts mirrored 1:1 with the frontend types'),
+      r('✓', 'services.py — records engine · SLA math · transitions'),
+      r('✓', 'tools.py — agent tools (create / transition / assign / link_records)'),
+      r('◐', 'prompts.py — triage live; exec-briefing / CAB-draft still scripted'),
+      r('✓', 'Same skeleton live across problems · changes · cmdb · portal'),
     ],
   },
   {
     id: 'tgtShared', title: 'Shared platform work (cross-module)', tone: 'plan', x: 580, y: 800, w: 520, h: 330,
     rows: [
-      r('·', 'cross_links table — INC ↔ PRB ↔ CHG ↔ CI relations (replaces src/data/seededCrossReferences.ts)'),
-      r('·', 'SLA engine — windows, business hours, breach-risk scoring'),
-      r('·', 'SSE hub — war-room comms + activity ticker + dashboards (galaxy/stream pattern already exists — generalise it)'),
-      r('·', 'Demo seeder CLI — load frontend fixtures into Postgres so the demo story (INC-1041, PRB-031, CHG-2047) survives the swap'),
-      r('·', 'Frontend swap — seeded imports → React Query fetchers; types unchanged, pages mostly untouched'),
-      r('·', 'Metrics aggregation — MTTR / SLA / volume endpoints feeding the 10 dashboards from the same store'),
+      r('✓', 'ticket_links table — INC ↔ PRB ↔ CHG ↔ CI relations (live)'),
+      r('✓', 'Frontend swap — seeded imports → live records API (slices 1–8)'),
+      r('◐', 'SLA engine — timers + breach notify live; predictive scoring client-side'),
+      r('◐', 'SSE hub — galaxy/stream live; generalise to war-room + dashboards'),
+      r('✗', 'Demo seeder CLI — load fixtures into Postgres, reset between runs — Plan A4/A5'),
+      r('✗', 'Metrics aggregation — MTTR / SLA / volume endpoints — Plan A1'),
     ],
   },
 ];
@@ -176,12 +172,13 @@ function n(id: string, label: string, x: number, y: number, w: number, h: number
   return { id, label, x, y, w, h, status, ...extra };
 }
 
+/* Current build sequence — mirrors the Roadmap phases (post records-engine). */
 export const READINESS_NODES: ArchNodeDef[] = [
-  n('rp1', 'P1 — incidents module: models + CRUD + SLA + drawer wiring', 1140, 810, 550, 48, 'planned'),
-  n('rp2', 'P2 — problems module + cross_links + cluster → problem promotion', 1140, 878, 550, 48, 'shared'),
-  n('rp3', 'P3 — changes module: risk scoring + CAB conflict detection + approvals wiring', 1140, 946, 550, 48, 'shared'),
-  n('rp4', 'P4 — portal/catalog round-trip + email notifications (exchange module)', 1140, 1014, 550, 48, 'live', { dashed: true }),
-  n('rp5', 'P5 — realtime: war-room SSE comms + activity stream + metrics aggregation', 1140, 1082, 550, 48, 'live', { dashed: true }),
+  n('rp1', 'P1 — finish Fleet Operations: collection-targeting exec + gating parity', 1140, 810, 550, 48, 'planned'),
+  n('rp2', 'P2 — incident→change automation: recurrence · risk · CAB draft · conflict', 1140, 878, 550, 48, 'shared'),
+  n('rp3', 'P3 — major-incident war room on live data + live exec summary', 1140, 946, 550, 48, 'shared'),
+  n('rp4', 'P4 — metrics & SLA aggregation: MTTR/SLA/volume + live dashboards', 1140, 1014, 550, 48, 'planned', { dashed: true }),
+  n('rp5', 'P5 — ingestion channels (email-to-ticket · webhooks) + drop scaffolding', 1140, 1082, 550, 48, 'live', { dashed: true }),
 ];
 
 export const READINESS_EDGES: ArchEdgeDef[] = [

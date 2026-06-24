@@ -1,0 +1,459 @@
+Work type,Issue ID,Summary,Epic Name,Parent,Components,Status,Story Points,Labels,Labels,Labels,Blocked By,Blocked By,Blocked By,Description
+Epic,1,Phase 1 · Finish Fleet Operations,Phase 1 · Finish Fleet Operations,,aiops,TO DO,,phase-p1,,,,,,"Bulk SCCM UI and approval gating shipped — make collection targeting real and close the gating gaps before it is demo-ready.
+
+Tracker id: p1"
+Epic,2,Phase 2 · Complete the incident → change automation,Phase 2 · Complete the incident → change automation,,aiops,TO DO,,phase-p2,,,,,,"The records and links exist; the automation that connects them does not. Turn the partial agents into the continuous incident-to-scheduled-change flow.
+
+Tracker id: p2"
+Epic,3,Phase 3 · Major-incident war room on live data,Phase 3 · Major-incident war room on live data,,aiops,TO DO,,phase-p3,,,,,,"The war-room screen is presentational — give it a real backend and a live-regenerated executive summary.
+
+Tracker id: p3"
+Epic,4,Phase 4 · Metrics & SLA on real data,Phase 4 · Metrics & SLA on real data,,aiops,TO DO,,phase-p4,,,,,,"Replace the hardcoded charts and client-side SLA math with backend aggregates.
+
+Tracker id: p4"
+Epic,5,Phase 5 · Ingestion channels & realtime,Phase 5 · Ingestion channels & realtime,,aiops,TO DO,,phase-p5,,,,,,"Let tickets arrive from outside the console and generalize the live event hub.
+
+Tracker id: p5"
+Epic,6,Phase 6 · Drop the scaffolding,Phase 6 · Drop the scaffolding,,aiops,TO DO,,phase-p6,,,,,,"Make the demo run on live data and a real runbook target instead of fixtures and mocks.
+
+Tracker id: p6"
+Epic,7,Phase 7 · Presenter polish,Phase 7 · Presenter polish,,aiops,TO DO,,phase-p7,,,,,,"Demo-layer finish work — none of it blocks the product.
+
+Tracker id: p7"
+Story,8,Execute against `collection_names`,,Phase 1 · Finish Fleet Operations,aiops,TO DO,3,lane-platform,phase-p1,,,,,"The bulk SCCM routes accept `collection_names` (and the UI sends them), but the handlers only pass `device_names` to the SCCM client — so targeting a collection alone executes against zero devices. Wire collection targeting through to execution.
+
+What needs to be done:
+1. In the bulk endpoints, resolve `collection_names` → member device names via the repository (`get_collection_by_name` → members).
+2. Merge resolved members with explicit `device_names`; dedupe.
+3. Pass the resolved device set to `install_updates` / `deploy_application` / `run_task_sequence` (extend the client/base signature if needed).
+4. Ensure the audit params reflect the resolved set, not the raw request.
+
+Definition of done:
+- A request with only `collection_names` executes against that collection’s members.
+- A request mixing devices + collections dedupes correctly.
+
+Touchpoints:
+- backend/app/modules/sccm/routes.py
+- backend/app/modules/sccm/mock_client.py
+- backend/app/modules/sccm/base.py
+- backend/app/modules/sccm/repository.py
+
+Note: Do together with `fleet-risk-collections` — share one resolution helper so the risk gate sees the same set.
+
+Tracker id: fleet-collections-exec"
+Story,9,"Risk gate counts collection members, not just named devices",,Phase 1 · Finish Fleet Operations,aiops,TO DO,2,lane-platform,phase-p1,,8,,,"Risk classification counts only `device_names`. With collection targeting, a 200-member collection looks like 0 targets, so escalation thresholds never fire and approvals get skipped.
+
+What needs to be done:
+1. Resolve `collection_names` → member count before classification (reuse the helper from `fleet-collections-exec`).
+2. Pass the full resolved target set / count into `get_risk_classifier().classify()`.
+3. Verify the `target_count` escalation rules in `risk_classification.yaml` fire on the true count.
+
+Definition of done:
+- Targeting a 200-member collection escalates as if 200 devices.
+- install_updates over the configured threshold routes to approval.
+
+Touchpoints:
+- backend/app/modules/sccm/routes.py (_gate_bulk_action callers)
+- backend/app/core/risk/classifier.py
+- backend/config/risk_classification.yaml
+
+Depends on: Execute against `collection_names`
+
+Note: Sequence after / with `fleet-collections-exec`.
+
+Tracker id: fleet-risk-collections"
+Story,10,Gate `reboot_device` on the voice path,,Phase 1 · Finish Fleet Operations,aiops,TO DO,1,lane-platform,phase-p1,,,,,"The voice/chat path executes `reboot_device` directly, skipping the approval gate the REST bulk routes enforce. A voice ""reboot device X"" reboots an endpoint with no approval.
+
+What needs to be done:
+1. Add `reboot_device` to `_GATED_VOICE_TOOLS` and route it through `_gate_voice_action` in `agent.py`, like install/deploy.
+2. Add a `reboot_device` entry to `risk_classification.yaml` if missing (default: requires approval).
+3. Confirm any single-device REST reboot route is gated too.
+
+Definition of done:
+- A chat/voice reboot returns `approval_pending` when policy requires it, with an audit entry.
+- Reboot risk is configured, not defaulted silently.
+
+Touchpoints:
+- backend/app/modules/sccm/agent.py
+- backend/config/risk_classification.yaml
+
+Note: Reboot is destructive on endpoints — default to requiring approval.
+
+Tracker id: fleet-reboot-gate"
+Story,11,Final test pass on bulk install / deploy / task-sequence,,Phase 1 · Finish Fleet Operations,aiops,TO DO,2,lane-platform,phase-p1,,8,9,10,"End-to-end QA of the bulk install / deploy / task-sequence flows: UI → risk gate → approval (incl. dual-admin on task sequences) → execution → Galaxy pulse → audit timeline.
+
+What needs to be done:
+1. Run each bulk action from the Fleet Operations page with both device and collection targets.
+2. Verify approval creation, dual-admin where `min_approvals=2` (task sequences), and the execution result.
+3. Verify the Endpoint/Galaxy pulse fires on submit and on the approval decision (`device.action.*`).
+4. Verify audit timeline labels render (e.g. ""fleet · install updates · N devices"").
+
+Definition of done:
+- All three actions pass with correct gating, execution, pulses, and audit.
+- No console errors; collection + device targeting both work.
+
+Touchpoints:
+- frontend/src/pages/FleetOperationsPage.tsx
+- frontend/src/components/fleet/*
+- backend approval + sccm modules
+
+Depends on: Execute against `collection_names`; Risk gate counts collection members, not just named devices; Gate `reboot_device` on the voice path
+
+Note: Depends on `fleet-collections-exec` + `fleet-risk-collections` landing first.
+
+Tracker id: fleet-final-test"
+Story,12,Auto-group recurring incidents into one problem,,Phase 2 · Complete the incident → change automation,aiops,TO DO,5,lane-itil,plan-B5,phase-p2,,,,"Linking incidents to a problem is manual today (`link_records` exists; auto-detection is scripted). Detect recurring incidents and group them under one problem automatically.
+
+What needs to be done:
+1. Define the recurrence signal: similarity on title/CI/category over a window (e.g. N incidents on same CI+symptom within T days).
+2. Implement detection in the problem/records service — on incident create and/or a periodic sweep.
+3. On a match, create or attach to a Problem via the records engine + `link_records`.
+4. Expose a Pattern Agent tool (`match_pattern` / `promote_to_problem`) for chat-initiated grouping.
+
+Definition of done:
+- Seeded recurring incidents auto-create or attach to a problem.
+- The link is visible in the incident and problem drawers.
+
+Touchpoints:
+- backend problem/records module + services
+- agent tools
+- optional scheduled task
+
+Note: Pattern Agent is ""partial"". Start with deterministic rules; LLM-assisted matching is a later enhancement. Plan ref B5.
+
+Tracker id: auto-recurrence"
+Story,13,"Change-risk scoring from history, traffic and dependencies",,Phase 2 · Complete the incident → change automation,aiops,TO DO,4,lane-itil,plan-B6,phase-p2,,,,"The change-risk model + CAB gate are live on records, but full auto-scoring from real factors is partial. Score change risk from history, blast radius, dependencies, and timing.
+
+What needs to be done:
+1. Define inputs: prior change-failure rate on the CI, count of dependent CIs, business-hours vs off-hours window, recent incidents on the CI.
+2. Implement a scoring service; persist the score + factor breakdown on the change record.
+3. Feed the score into the CAB gate threshold (high → approval).
+4. Surface the factor breakdown in the change drawer risk explainer.
+
+Definition of done:
+- Change risk reflects the factors; high-risk auto-routes to CAB.
+- The explainer shows why the score landed where it did.
+
+Touchpoints:
+- backend change module/services
+- frontend change drawer
+- risk config
+
+Note: Change-Risk Agent is ""partial""; the CAB gate already exists. Plan ref B6.
+
+Tracker id: change-risk-scoring"
+Story,14,Auto-drafted change-advisory (CAB) summary,,Phase 2 · Complete the incident → change automation,aiops,TO DO,3,lane-ai,plan-B7,phase-p2,13,,,"The CAB summary/brief is scripted. Auto-draft it via the LLM from the change + its linked incidents/problem + risk factors, and persist it on the record.
+
+What needs to be done:
+1. Add a prompt that takes change + linked records + risk factors → a CAB brief.
+2. Generate on demand (button) and/or on submit-to-CAB; persist the brief on the change record.
+3. Render it in the CAB calendar entry + change drawer; allow editing before approval.
+
+Definition of done:
+- A change submitted to CAB has an LLM-drafted brief persisted and editable.
+- The brief cites the linked incidents/problem.
+
+Touchpoints:
+- backend change module (prompts/services)
+- frontend CAB calendar + change drawer
+
+Depends on: Change-risk scoring from history, traffic and dependencies
+
+Note: Plan ref B7.
+
+Tracker id: cab-draft"
+Story,15,Maintenance-window conflict check + safe-window suggestion,,Phase 2 · Complete the incident → change automation,aiops,TO DO,3,lane-itil,plan-B8,phase-p2,,,,"Conflict detection runs live off `cab_window`. Add the missing half: when a proposed window conflicts, automatically suggest the next safe window.
+
+What needs to be done:
+1. For a proposed window, query overlapping changes / maintenance windows (already live for detection).
+2. Compute the next non-conflicting window honouring blackout periods and business hours.
+3. Return conflicts + a suggested window to the UI with one-click apply.
+
+Definition of done:
+- Scheduling into a conflicting window surfaces the conflicts and a suggested safe window.
+- Applying the suggestion reschedules the change.
+
+Touchpoints:
+- backend change/CAB services
+- frontend CAB calendar
+
+Note: CAB Scheduler is ""partial"" — detection done, auto-pick missing. Plan ref B8.
+
+Tracker id: cab-conflict-window"
+Story,16,War room backed by live data + a real comms log,,Phase 3 · Major-incident war room on live data,aiops,TO DO,4,lane-itil,plan-B2,phase-p3,,,,"The major-incident war room is presentational — clock, roster, comms, actions all live in front-end state. Give it a real backend so comms and actions persist and survive reload.
+
+What needs to be done:
+1. Add DB models: `major_incident` and `war_room_comms` (+ migration).
+2. Add routes: create/get major incident, post/list comms, roster + actions.
+3. Wire the war-room UI from local state to the API (React Query).
+4. Add the declare-from-P1 flow: promote a P1 incident to a major incident.
+
+Definition of done:
+- Comms and actions persist and survive a reload.
+- A major incident links back to its originating incident.
+
+Touchpoints:
+- backend new major_incident module + migration
+- frontend war-room page
+
+Note: Plan ref B2.
+
+Tracker id: warroom-live"
+Story,17,Executive summary regenerated live from incident state,,Phase 3 · Major-incident war room on live data,aiops,TO DO,3,lane-ai,plan-B3,phase-p3,16,,,"The exec briefing on the war-room screen is scripted. Have the Briefing Agent regenerate it live from the incident state + comms log.
+
+What needs to be done:
+1. Add a prompt: major incident + comms log + timeline → executive summary.
+2. Regenerate on an interval and on demand; persist the last summary + timestamp.
+3. Render it in the war-room header with an ""updated Xm ago"" freshness indicator.
+
+Definition of done:
+- The summary reflects current state and regenerates.
+- Freshness is visible to the user.
+
+Touchpoints:
+- backend major_incident services/prompts
+- frontend war-room header
+
+Depends on: War room backed by live data + a real comms log
+
+Note: Depends on `warroom-live`. Plan ref B3.
+
+Tracker id: warroom-summary"
+Story,18,Metrics Aggregation endpoints,,Phase 4 · Metrics & SLA on real data,aiops,TO DO,3,lane-platform,plan-A1,phase-p4,,,,"The dashboards show fixed charts. Add aggregation endpoints (MTTR, SLA attainment, ticket volume) so they can read live numbers from the records store.
+
+What needs to be done:
+1. Define the metrics + windows; implement SQL aggregations over the records tables.
+2. Expose endpoints (e.g. `/api/v1/metrics/mttr`, `/sla`, `/volume`) with filters (time range, priority).
+3. Shape responses to match the dashboard chart props; add light caching if needed.
+
+Definition of done:
+- Endpoints return correct aggregates that match the database.
+- Response shapes are documented and dashboard-ready.
+
+Touchpoints:
+- backend metrics module/routes
+- records store
+
+Note: Feeds `dashboards-live`. Plan ref A1.
+
+Tracker id: metrics-agg"
+Story,19,Dashboards read live aggregates,,Phase 4 · Metrics & SLA on real data,aiops,TO DO,2,lane-platform,plan-A1,phase-p4,18,,,"Dashboard charts use hardcoded inline series and can contradict the seeds. Wire them to the metrics aggregation API so there is one source of truth.
+
+What needs to be done:
+1. Replace inline arrays in the dashboard components with React Query fetchers to the metrics endpoints.
+2. Keep the existing chart components; map API responses → chart props.
+3. Remove the seed-derived series.
+
+Definition of done:
+- Charts reflect live data; no hardcoded series remain.
+- Dashboards and the records store agree.
+
+Touchpoints:
+- frontend dashboard components/pages
+- frontend/src/services/api.ts
+
+Depends on: Metrics Aggregation endpoints
+
+Note: Depends on `metrics-agg`. Plan ref A1.
+
+Tracker id: dashboards-live"
+Story,20,SLA predictive-breach computed server-side,,Phase 4 · Metrics & SLA on real data,aiops,TO DO,2,lane-itil,phase-p4,,,,,"SLA breach → admin notify is live, but predictive breach is computed client-side. Move prediction server-side into the SLA engine so it is consistent and event-driven.
+
+What needs to be done:
+1. Implement breach-risk computation in the SLA service (time-to-breach vs remaining work / priority).
+2. Expose it on the incident payload or a dedicated endpoint; emit a warning event ahead of breach.
+3. Have the front end consume the server value and drop the client heuristic.
+
+Definition of done:
+- Predicted breach matches the server computation.
+- Warnings fire before the breach, not after.
+
+Touchpoints:
+- backend SLA service
+- frontend incident list/drawer
+
+Tracker id: sla-predictive"
+Story,21,Notifications round-trip to the citizen portal,,Phase 4 · Metrics & SLA on real data,aiops,TO DO,2,lane-platform,phase-p4,,,,,"The notifications table and SLA-breach admin notify exist; the citizen-portal round-trip does not. Push status updates back to the requester in-portal (and by email).
+
+What needs to be done:
+1. On service_request / incident status change, enqueue a notification + email (exchange/outbox).
+2. Surface status + a notification feed in the portal ""my-requests"" view.
+3. Optional: an email deep-link back to the request.
+
+Definition of done:
+- A status change notifies the requester in-portal and by email.
+- The update is visible in my-requests.
+
+Touchpoints:
+- backend notifications + portal/records
+- exchange/outbox
+- frontend portal
+
+Tracker id: notif-roundtrip"
+Story,22,Generalize the SSE hub beyond Galaxy,,Phase 5 · Ingestion channels & realtime,aiops,TO DO,3,lane-platform,phase-p5,,,,,"The galaxy/stream SSE pattern works for one feed. Generalize it into a reusable hub (topics/channels) so war-room comms, an activity ticker, and dashboards can all subscribe.
+
+What needs to be done:
+1. Extract a generic SSE hub (topic-based) from `galaxy/stream`.
+2. Publish domain events (incident updates, comms, metrics) to topics.
+3. Have the front end subscribe per view; replace per-feature polling where it helps.
+
+Definition of done:
+- At least two consumers (e.g. war-room comms + activity ticker) run off the shared hub.
+
+Touchpoints:
+- backend core/galaxy or new core/sse
+- frontend SSE hooks
+
+Tracker id: sse-generalize"
+Story,23,Email-to-Ticket,,Phase 5 · Ingestion channels & realtime,aiops,TO DO,3,lane-itil,phase-p5,,,,,"No inbound email channel today. Turn inbound email into an incident, with reply threading back onto the ticket.
+
+What needs to be done:
+1. Ingress: poll a mailbox (Exchange/Graph) or accept an inbound webhook from the mail system.
+2. Parse sender/subject/body → incident via the records engine; attach the original message.
+3. Thread replies as worklog entries; dedupe by message-id.
+
+Definition of done:
+- An email creates an incident; a reply appends to it; the sender is notified.
+
+Touchpoints:
+- backend new ingress (reuse exchange module)
+- records engine
+- notifications
+
+Note: Reuse the existing exchange client for mailbox access.
+
+Tracker id: email-to-ticket"
+Story,24,Inbound Webhooks,,Phase 5 · Ingestion channels & realtime,aiops,TO DO,2,lane-itil,phase-p5,,,,,"Monitoring alerts should open incidents automatically. Add an authenticated webhook endpoint that maps alert payloads to incidents idempotently.
+
+What needs to be done:
+1. Add `/api/v1/webhooks/alerts` with auth (shared secret / HMAC signature).
+2. Map payloads (generic / Prometheus / Dynatrace shape) → incident fields; idempotency on alert id.
+3. Optional: auto-correlate to a CI or an existing open incident.
+
+Definition of done:
+- A posted alert creates or updates an incident idempotently.
+- The signature is verified; unsigned posts are rejected.
+
+Touchpoints:
+- backend new webhooks route
+- records engine
+
+Tracker id: inbound-webhooks"
+Story,25,Incidents working end to end on the live system,,Phase 6 · Drop the scaffolding,aiops,TO DO,3,lane-itil,plan-B1,phase-p6,,,,"Incidents already run end-to-end on the live records engine (create / transition / assign / worklog / SLA / KB citations). Kept here for sequence context; this is the proof the records pattern works.
+
+What needs to be done:
+1. Verification only: confirm every incident flow hits the API with no seeded fallback.
+
+Definition of done:
+- Incident CRUD + SLA + citations are all live (already true).
+
+Touchpoints:
+- backend incident module
+- frontend incidents page
+
+Note: Marked done. Plan ref B1.
+
+Tracker id: incidents-e2e"
+Story,26,Demo Seeder CLI — one-click seed + reset,,Phase 6 · Drop the scaffolding,aiops,TO DO,3,lane-platform,plan-A4,phase-p6,,,,"A one-click CLI that seeds the canonical demo fixtures into Postgres and resets between runs, so the same walkthrough is reproducible without the scripted front-end layer.
+
+What needs to be done:
+1. Build a CLI/script that loads the canonical fixtures (INC-1041, PRB-031, CHG-2047, …) into the records tables.
+2. Add a reset command that truncates + reseeds deterministically.
+3. Wire it into compose / dev-test for a one-command demo reset.
+
+Definition of done:
+- `seed` populates a clean DB to the demo state; `reset` restores it.
+- The demo story survives the swap off fixtures.
+
+Touchpoints:
+- backend/demo/seed_*.py
+- docker-compose / dev-test
+
+Note: A `seed_runbooks_and_reports.py` already exists — extend that pattern. Plan ref A4/A5.
+
+Tracker id: demo-seeder"
+Story,27,Whole demo on real database records,,Phase 6 · Drop the scaffolding,aiops,TO DO,2,lane-itil,plan-A5,phase-p6,26,,,"Retire the remaining front-end seeded fixtures so the demo runs entirely on real records served by the API.
+
+What needs to be done:
+1. Inventory the remaining `src/data/seeded*` imports still used by pages.
+2. Replace each with React Query fetchers (types unchanged — the contract is already frozen).
+3. Remove the seed fixtures once nothing imports them.
+
+Definition of done:
+- No page imports seeded fixtures.
+- The demo runs on Postgres via the seeder.
+
+Touchpoints:
+- frontend/src/data/*
+- pages/components
+- frontend/src/services/api.ts
+
+Depends on: Demo Seeder CLI — one-click seed + reset
+
+Note: Depends on `demo-seeder` and the per-module APIs (mostly done). Plan ref A5.
+
+Tracker id: demo-real-records"
+Story,28,WebLogic real wiring,,Phase 6 · Drop the scaffolding,aiops,TO DO,2,lane-integrations,phase-p6,,,,,"The WebLogic runbook target runs in mock (`WEBLOGIC_MOCK=true`). Wire it to a real WebLogic Admin REST endpoint while keeping the mock for offline/air-gapped demos.
+
+What needs to be done:
+1. Provision a reachable WebLogic admin endpoint; set credentials/config.
+2. Set `WEBLOGIC_MOCK=false`; verify `AdminWebLogicClient` calls (status / start / stop / redeploy) against it.
+3. Confirm approval gating on HIGH-risk weblogic actions.
+
+Definition of done:
+- weblogic_* tools operate on a live domain through the approval flow.
+- The mock toggle still works for offline demos.
+
+Touchpoints:
+- backend/app/modules/weblogic/admin_client.py
+- config/env
+
+Tracker id: weblogic-wiring"
+Story,29,Fix the two known Story Mode stepper bugs,,Phase 7 · Presenter polish,aiops,TO DO,1,lane-experience,phase-p7,,,,,"Two known Story Mode stepper bugs: it does not detect when the presenter navigates off-script, and the ""take me back"" link does not restore the correct step.
+
+What needs to be done:
+1. Reproduce both bugs in the presenter story stepper.
+2. Off-script check: detect navigation away from the scripted step and offer to return.
+3. Take-me-back: restore the correct URL/state for the current step.
+
+Definition of done:
+- The stepper recovers from off-script navigation.
+- The back link returns to the right step.
+
+Touchpoints:
+- frontend story / beacon stepper components
+
+Tracker id: storymode-bugs"
+Story,30,Demo Autopilot,,Phase 7 · Presenter polish,aiops,TO DO,3,lane-experience,phase-p7,,,,,"A hands-free autopilot that runs a demo story end-to-end — camera walk + narration + step advance — with the presenter able to take over at any point.
+
+What needs to be done:
+1. Drive the existing stepper automatically on a timer / voice cue.
+2. Sync the camera walk + TTS narration per step.
+3. Add play / pause / skip controls; stop on user interaction.
+
+Definition of done:
+- A story plays unattended start-to-finish with narration.
+- The presenter can take over mid-run.
+
+Touchpoints:
+- frontend presenter layer (stepper, workspace-map playback, TTS)
+
+Note: Builds on the workspace-map playback + galaxy voiceovers that already ship.
+
+Tracker id: demo-autopilot"
+Story,31,Arabic narrations for demo copy,,Phase 7 · Presenter polish,aiops,TO DO,2,lane-experience,phase-p7,,,,,"Arabic narration and i18n of the demo copy — stories, captions, voiceovers — so the whole demo can run in Arabic.
+
+What needs to be done:
+1. Extract demo copy strings into i18n (ar/en).
+2. Provide Arabic translations; switch the narration TTS voice to AR.
+3. Verify RTL captions + AR TTS pronunciation.
+
+Definition of done:
+- The demo runs fully in Arabic (copy + narration) when AR is selected.
+
+Touchpoints:
+- frontend i18n locales
+- presenter copy
+- TTS voice selection
+
+Tracker id: arabic-narrations"

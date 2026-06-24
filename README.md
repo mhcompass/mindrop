@@ -1,4 +1,4 @@
-# AIOps · Architecture Map
+# Mindrop · Architecture Map
 
 Standalone React app that renders the AIOps (yc-itsm) architecture
 diagrams as zoomable, pannable react-flow canvases. Interactive twin of
