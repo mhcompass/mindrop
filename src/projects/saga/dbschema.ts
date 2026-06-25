@@ -29,7 +29,7 @@ export const DB_DOMAINS: DbDomainDef[] = [
     id: 'dm_media', name: 'Projects & Media', accent: '#2563eb',
     tables: [
       t('tbl_projects', 'projects', 'live', 'project + sharing', 'api-projects'),
-      t('tbl_videos', 'videos', 'live', 'source + rendered · metadata · status', 'api-videos'),
+      t('tbl_videos', 'videos', 'live', 'source + rendered · status · settings (MutableDict JSONB)', 'api-videos'),
       t('tbl_frames', 'frames', 'live', 'extracted screenshots · timestamps', 'video-processor'),
     ],
   },
@@ -39,13 +39,13 @@ export const DB_DOMAINS: DbDomainDef[] = [
       t('tbl_jobs', 'jobs', 'live', 'ARQ job state · progress', 'arq-queue'),
       t('tbl_voiceovers', 'voiceovers', 'live', 'TTS audio per language', 'tts-service'),
       t('tbl_documents', 'documents', 'live', 'generated step-by-step guides', 'doc-generator'),
-      t('tbl_presets', 'presets', 'live', 'effect / zoom presets', 'video-effects'),
+      t('tbl_presets', 'effect_presets', 'live', '12 effect types · user/workspace/built-in', 'api-presets'),
     ],
   },
   {
     id: 'dm_brand', name: 'Branding', accent: '#d946ef',
     tables: [
-      t('tbl_brands', 'brands', 'live', 'logo · colours · intros/outros', 'video-effects'),
+      t('tbl_brands', 'brand_settings', 'live', 'logo · colours · intros/outros', 'api-brands'),
     ],
   },
 ];

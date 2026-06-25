@@ -31,7 +31,7 @@ export const POSTURE_NODES: ArchNodeDef[] = [
 
   n('p_aiZone', 'AI host (remote, GPU)', 960, 250, 280, 180, 'external', { zone: true }),
   n('p_whisper', 'Whisper (in-process)', 985, 300, 230, 48, 'ai'),
-  n('p_ollama', 'Ollama — Llama3.1 / LLaVA', 985, 356, 230, 30, 'external'),
+  n('p_ollama', 'LLM — Qwen3-30B / LLaVA', 985, 356, 230, 30, 'external'),
   n('p_kokoro', 'Kokoro TTS', 985, 392, 230, 30, 'external'),
 ];
 

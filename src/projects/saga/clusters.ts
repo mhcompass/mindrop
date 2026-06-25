@@ -14,7 +14,7 @@ export const CLUSTER_TREE: ClusterTreeDef[] = [
   },
   {
     id: 'c_api', name: 'API & Gateway', accent: '#0ea5e9',
-    children: ['api-gateway', 'api-auth', 'api-videos', 'api-projects', 'api-workspaces', 'api-docs', 'api-websocket'],
+    children: ['api-gateway', 'api-auth', 'api-videos', 'api-projects', 'api-workspaces', 'api-docs', 'api-editor', 'api-presets', 'api-stats', 'api-brands', 'api-websocket'],
   },
   {
     id: 'c_workers', name: 'Worker Pipeline', accent: '#7c3aed',

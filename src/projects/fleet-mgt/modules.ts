@@ -22,8 +22,9 @@ const SECTIONS: Section[] = [
       m('booking-engine', 'Booking Engine', 'done', 'done', 'lifecycle state machine · transactional assignment (SELECT FOR UPDATE)', { owner: 'Core', effort: 'L', critical: true }),
       m('availability', 'Availability Engine', 'done', 'done', 'real-time vehicle availability · GiST time-window no-overlap', { owner: 'Core', effort: 'M', critical: true }),
       m('driver-alloc', 'Driver Allocation', 'done', 'done', 'assign drivers from pool · with/without-driver bookings', { owner: 'Core', effort: 'M' }),
-      m('negotiation', 'Negotiation / Allocation', 'done', 'done', 'best-enabler options · alt category · date shift · priority + bump', { owner: 'Core', effort: 'L' }),
-      m('reminder-sched', 'Reminder Scheduler', 'done', 'done', 'background loop · 1h-before + confirmation sends', { owner: 'Core', effort: 'S' }),
+      m('negotiation', 'Negotiation / Allocation', 'done', 'done', 'evaluate_options — exact/alt-category/nearby-date/bump/escalate · operator-gated', { owner: 'Core', effort: 'L' }),
+      m('priority-calculator', 'Priority Scoring', 'done', 'done', 'rank · user_class · official_mission · department → bump decisions', { owner: 'Core', effort: 'S' }),
+      m('reminder-sched', 'Reminder Scheduler', 'done', 'done', 'APScheduler loop · 1h-before + confirmation sends', { owner: 'Core', effort: 'S' }),
     ],
   },
   {
@@ -39,7 +40,7 @@ const SECTIONS: Section[] = [
   {
     title: 'STAFF DASHBOARD',
     mods: [
-      m('dashboard', 'Staff Dashboard (React)', 'partial', 'done', 'ops · bookings · fleet · drivers · escalations · audit (override UI in progress)', { owner: 'Experience', effort: 'L' }),
+      m('dashboard', 'Staff Dashboard (React)', 'done', 'done', '11 pages: ops · bookings · fleet · drivers · escalations · templates · reports · admin · audit · schedule · rules', { owner: 'Experience', effort: 'L' }),
       m('kpi-report', 'KPI & Reporting', 'done', 'done', 'automation rate · utilization · Excel/PDF export', { owner: 'Platform', effort: 'M' }),
       m('rules-engine', 'Tenant Config & Rules', 'done', 'done', 'rank tiers · priority weights · bump policy · mission keywords', { owner: 'Core', effort: 'M' }),
       m('auth-rbac', 'Auth & RBAC', 'done', 'done', '5 roles (admin/fleet_manager/operator/delivery/viewer) · token guards', { owner: 'Platform', effort: 'M', sensitivity: 'sensitive' }),
@@ -51,7 +52,7 @@ const SECTIONS: Section[] = [
     mods: [
       m('pg', 'PostgreSQL 16', 'done', 'done', 'transactional bookings · GiST exclusion · JSONB tenant config', { owner: 'Platform', infra: true }),
       m('redis', 'Redis 7 (sessions)', 'done', 'done', 'conversation · license verdict · profile · dedup (TTL)', { owner: 'Platform', infra: true }),
-      m('analytics-db', 'Conversation / KPI Events', 'partial', 'partial', 'conversation_messages + kpi_snapshots (export partial)', { owner: 'Platform', effort: 'S' }),
+      m('analytics-db', 'Conversation / KPI Events', 'done', 'done', 'conversation_messages (DB audit trail) + kpi_snapshots', { owner: 'Platform', effort: 'S' }),
     ],
   },
   {

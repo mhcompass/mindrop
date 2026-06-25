@@ -27,7 +27,7 @@ export const DB_DOMAINS: DbDomainDef[] = [
   {
     id: 'dm_booking', name: 'Bookings', accent: '#0d9488',
     tables: [
-      t('tbl_bookings', 'bookings', 'live', 'lifecycle · start_at/end_at (tstzrange, GiST no-overlap)', 'booking-engine'),
+      t('tbl_bookings', 'bookings', 'live', 'lifecycle · start_at/end_at (tstzrange, GiST no-overlap) · official_mission', 'booking-engine'),
       t('tbl_reminders', 'reminders', 'live', 'fire_at · pickup/driver · pending/sent', 'reminder-sched'),
       t('tbl_escalations', 'escalations', 'live', 'reason · assigned_to · open/resolved', 'escalation'),
     ],
@@ -50,7 +50,7 @@ export const DB_DOMAINS: DbDomainDef[] = [
     tables: [
       t('tbl_audit', 'audit_log', 'live', 'immutable action trail', 'audit-log'),
       t('tbl_kpi', 'kpi_snapshots', 'live', 'committee outcomes archive', 'kpi-report'),
-      t('tbl_convo', 'conversation_messages', 'partial', 'message log (audit / training)', 'analytics-db'),
+      t('tbl_convo', 'conversation_messages', 'live', 'auditable message history (DB primary)', 'analytics-db'),
     ],
   },
 ];

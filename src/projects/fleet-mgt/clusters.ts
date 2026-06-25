@@ -11,7 +11,7 @@ export type { ClusterTreeDef, ClusterCounts, ClusterEdgeDef, AgentDef } from '..
 export const CLUSTER_TREE: ClusterTreeDef[] = [
   {
     id: 'c_booking', name: 'Booking & Allocation', accent: '#2563eb',
-    children: ['booking-engine', 'availability', 'driver-alloc', 'negotiation', 'reminder-sched'],
+    children: ['booking-engine', 'availability', 'driver-alloc', 'negotiation', 'priority-calculator', 'reminder-sched'],
   },
   {
     id: 'c_convo', name: 'Conversation & WhatsApp', accent: '#0d9488',

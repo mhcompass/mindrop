@@ -26,7 +26,7 @@ export const DEPLOY_NODES: ArchNodeDef[] = [
   n('net', 'compose network: saga · volumes: postgres_data · redis_data · storage_data · models_data', 80, 530, 880, 30, 'note'),
 
   n('aiZone', 'AI host — separate box (GPU)', 1020, 140, 360, 230, 'external', { zone: true }),
-  n('ollama', 'Ollama — Llama 3.1 / LLaVA\n(:11434)', 1050, 200, 300, 56, 'external'),
+  n('ollama', 'LLM — Qwen3-30B / LLaVA\n(ollama|openai · :11434)', 1050, 200, 300, 56, 'external'),
   n('kokoro', 'Kokoro TTS — FastAPI\n(:8000)', 1050, 270, 300, 56, 'external'),
   n('aiNote', 'Whisper runs in-process (faster-whisper); LLM + advanced TTS are remote.', 1050, 332, 300, 30, 'note'),
 ];
