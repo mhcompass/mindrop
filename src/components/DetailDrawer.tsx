@@ -9,11 +9,9 @@
 import { useEffect, useState, type ReactNode } from 'react';
 
 import { useTheme } from '../theme';
+import { useProject } from '../project';
 import { useTeamState } from '../state';
-import { ENGINEERS, ENGINEER_BY_ID, UNASSIGNED } from '../model/team';
-import { ROADMAP, type Deliverable } from '../model/roadmap';
-import { DETAILS } from '../model/details';
-import { WORK } from '../model/schedule';
+import type { Deliverable } from '../model/types';
 import type { Status } from '../api';
 
 const STATUS_LABEL: Record<Status, string> = { done: 'done', wip: 'in progress', todo: 'to build' };
@@ -26,19 +24,28 @@ const DOMAIN_SHORT: Record<string, string> = {
   'System integrations': 'Integrations',
 };
 
-/** id → { deliverable, phase title } — built once from the roadmap. */
-const INDEX: Record<string, { d: Deliverable; phase: string }> = Object.fromEntries(
-  ROADMAP.flatMap((p) => p.items.map((d) => [d.id, { d, phase: p.title }])),
-);
-
-/** Reverse dependencies: id → ids that are blocked by it. */
-const BLOCKS: Record<string, string[]> = {};
-for (const [id, w] of Object.entries(WORK)) for (const dep of w.deps ?? []) (BLOCKS[dep] ||= []).push(id);
-
 export function DetailDrawer() {
   const theme = useTheme();
+  const { delivery } = useProject();
+  const {
+    engineers: ENGINEERS,
+    engineerById: ENGINEER_BY_ID,
+    unassigned: UNASSIGNED,
+    roadmap: ROADMAP,
+    details: DETAILS,
+    work: WORK,
+  } = delivery!;
   const { detailId, closeDetail, openDetail, statusOf, assigneeOf, update, conn } = useTeamState();
   const open = detailId !== null;
+
+  /** id → { deliverable, phase title } — built from the roadmap. */
+  const INDEX: Record<string, { d: Deliverable; phase: string }> = Object.fromEntries(
+    ROADMAP.flatMap((p) => p.items.map((d): [string, { d: Deliverable; phase: string }] => [d.id, { d, phase: p.title }])),
+  );
+
+  /** Reverse dependencies: id → ids that are blocked by it. */
+  const BLOCKS: Record<string, string[]> = {};
+  for (const [id, w] of Object.entries(WORK)) for (const dep of w.deps ?? []) (BLOCKS[dep] ||= []).push(id);
 
   // Keep the last shown id during the slide-out so content doesn't blank.
   const [shownId, setShownId] = useState<string | null>(null);
@@ -312,8 +319,8 @@ function Section({ theme, title, children }: { theme: ReturnType<typeof useTheme
 }
 
 function DepChip({ theme, id, onOpen }: { theme: ReturnType<typeof useTheme>; id: string; onOpen: (id: string) => void }) {
-  const e = INDEX[id];
-  const label = e?.d.text ?? id;
+  const { delivery } = useProject();
+  const label = delivery!.roadmap.flatMap((p) => p.items).find((it) => it.id === id)?.text ?? id;
   return (
     <button
       onClick={() => onOpen(id)}

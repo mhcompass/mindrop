@@ -1,10 +1,12 @@
 import type { ReactNode } from 'react';
 
 import { useTheme } from '../theme';
-import { PLAN_AVAILABLE, PLAN_GROUPS, PLAN_TIMELINE } from '../model/plan3';
+import { useProject } from '../project';
 
 export function CapabilitiesBoard() {
   const theme = useTheme();
+  const { capabilities } = useProject();
+  const { available: PLAN_AVAILABLE, groups: PLAN_GROUPS, timeline: PLAN_TIMELINE } = capabilities!;
   const planMark = theme.dark ? '#60a5fa' : '#2563eb';
   const okMark = theme.card.marks['✓'];
 

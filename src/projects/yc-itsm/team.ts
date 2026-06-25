@@ -9,22 +9,8 @@
  * else needs to change.
  */
 
-import type { CapabilityDomain } from './plan3';
-
-export interface Engineer {
-  /** Stable id — used as the assignee key in the persisted state. */
-  id: string;
-  /** Lane label (the capability area). */
-  lane: string;
-  /** Real engineer name once assigned; falls back to the lane label. */
-  person?: string;
-  /** Owner squad as recorded in modules.ts. */
-  squad: string;
-  /** Capability domain this lane owns end-to-end. */
-  domain?: CapabilityDomain;
-  /** Accent colour for board lanes / chips. */
-  color: string;
-}
+import type { CapabilityDomain, Engineer } from '../../model/types';
+export type { Engineer } from '../../model/types';
 
 export const UNASSIGNED = 'unassigned';
 

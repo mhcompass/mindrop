@@ -5,44 +5,10 @@
  * hard dependency. Estimates come from the development-plan workstreams.
  */
 
-/** The four capability domains — the grouping shared by the Capabilities
- *  board, the Delivery Plan, and the Roadmap cross-references. */
-export const CAPABILITY_DOMAINS = [
-  'Service management (ITIL)',
-  'Assistant and knowledge',
-  'Platform and operations',
-  'System integrations',
-] as const;
-export type CapabilityDomain = (typeof CAPABILITY_DOMAINS)[number];
+import type { AvailableGroup, PlanGroup } from '../../model/types';
+export { CAPABILITY_DOMAINS } from '../../model/types';
+export type { CapabilityDomain, PlanItem, PlanGroup, AvailableItem, AvailableGroup } from '../../model/types';
 
-export interface PlanItem {
-  /** Development-plan reference (A1, B5, …). */
-  ref: string;
-  title: string;
-  /** Delivery days (build + per-item test). */
-  days: number;
-  /** Capability domain (matches the Supported-today group names). */
-  domain: CapabilityDomain;
-}
-
-export interface PlanGroup {
-  id: string;
-  title: string;
-  /** Plain explanation of what this group does and why it matters. */
-  summary: string;
-  items: PlanItem[];
-}
-
-/** Functionality that already works and can be enabled / demonstrated now.
- *  `testing: true` = built in the last few days; needs a final QA pass. */
-export interface AvailableItem {
-  text: string;
-  testing?: boolean;
-}
-export interface AvailableGroup {
-  group: string;
-  items: AvailableItem[];
-}
 export const PLAN_AVAILABLE: AvailableGroup[] = [
   {
     group: 'Service management (ITIL)',

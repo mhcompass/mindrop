@@ -152,3 +152,239 @@ export interface ReadinessCardDef {
   h: number;
   rows: ReadinessRow[];
 }
+
+/* ════════════════════════════════════════════════════════════════
+ * Shared data-shape types
+ *
+ * These describe the SHAPE of a project's data (not its content), so
+ * the generic ProjectModel (src/projects/types.ts) and every concrete
+ * project (src/projects/<id>/*) reference one canonical source. Content
+ * + derivation + validation live in each project's folder.
+ * ════════════════════════════════════════════════════════════════ */
+
+/** Capability domains — the taxonomy shared by the Capabilities board,
+ *  the Delivery Plan, and the Roadmap cross-references. A new project that
+ *  needs different domains extends this union. */
+export const CAPABILITY_DOMAINS = [
+  'Service management (ITIL)',
+  'Assistant and knowledge',
+  'Platform and operations',
+  'System integrations',
+] as const;
+export type CapabilityDomain = (typeof CAPABILITY_DOMAINS)[number];
+
+/* ── Roadmap ──────────────────────────────────────────────────── */
+
+export type DeliverableStatus = 'done' | 'wip' | 'todo';
+
+export interface Deliverable {
+  /** Stable id — the key the tracker API persists status/assignee against.
+   *  Never reuse or renumber; changing it orphans the saved state. */
+  id: string;
+  /** The deliverable, phrased as the unit of work that gets checked off. */
+  text: string;
+  /** Short clarifier — where it stands or why it matters. */
+  note?: string;
+  status: DeliverableStatus;
+  /** Capability domain this advances — cross-ref to the Capabilities board. */
+  domain?: CapabilityDomain;
+  /** Delivery-plan workstream id (A1, B5, …) — cross-ref to the Delivery Plan. */
+  planRef?: string;
+  /** Module id in modules.ts — cross-ref to the Module Tracker. */
+  module?: string;
+}
+
+export interface RoadmapPhase {
+  id: string;
+  title: string;
+  /** One-line "what should be implemented" for the phase. */
+  intent: string;
+  items: Deliverable[];
+}
+
+/* ── Agents board ─────────────────────────────────────────────── */
+
+export interface AgentCard {
+  /** Source edge id. */
+  id: string;
+  name: string;
+  status: AgentStatus;
+  /** One-line purpose. */
+  purpose: string;
+  tools: string[];
+  /** Capabilities that are wired today. */
+  live: string[];
+  /** Capabilities that are still scripted / to build. */
+  pending: string[];
+  from: { id: string; name: string; status: ModuleStatus };
+  to: { id: string; name: string; status: ModuleStatus };
+}
+
+/* ── Checklist ────────────────────────────────────────────────── */
+
+export interface ChecklistEntry {
+  id: string;
+  name: string;
+  note?: string;
+  status: ModuleStatus;
+  ui: PartState;
+  api: PartState;
+  feOnly?: boolean;
+  /** Shipped today. */
+  delivered: string[];
+  /** Still to build or modify. */
+  todo: string[];
+}
+
+export interface ChecklistGroup {
+  id: string;
+  title: string;
+  accent: string;
+  entries: ChecklistEntry[];
+}
+
+/* ── Clusters ─────────────────────────────────────────────────── */
+
+export interface ClusterTreeDef {
+  id: string;
+  name: string;
+  /** Accent colour slug for the cluster title strip. */
+  accent: string;
+  /** Children: nested clusters or module ids (strings → modules.ts). */
+  children: Array<ClusterTreeDef | string>;
+}
+
+export type ClusterCounts = Record<ModuleStatus, number>;
+
+export interface ClusterEdgeDef {
+  id: string;
+  source: string;
+  target: string;
+  label: string;
+  /** Handle hints: t(op) b(ottom) l(eft) r(ight). */
+  sh?: 't' | 'b' | 'l' | 'r';
+  th?: 't' | 'b' | 'l' | 'r';
+}
+
+export interface AgentDef {
+  id: string;
+  name: string;
+  desc: string;
+  /** Cluster ids this agent works across (≥2). */
+  connects: string[];
+}
+
+/* ── Database schema (Zoom Map data layer) ────────────────────── */
+
+export type TableStatus = 'live' | 'partial' | 'planned';
+
+export interface DbTableDef {
+  id: string;
+  name: string;
+  status: TableStatus;
+  note?: string;
+  /** Owning module id (defaults to the domain owner below). */
+  owner?: string;
+}
+
+export interface DbDomainDef {
+  id: string;
+  name: string;
+  accent: string;
+  tables: DbTableDef[];
+}
+
+/* ── Deliverable detail (drawer) ──────────────────────────────── */
+
+export interface DeliverableDetail {
+  /** What this is and why it matters — one short paragraph. */
+  summary: string;
+  /** Ordered, concrete implementation steps. */
+  steps: string[];
+  /** Definition of done — what must be true to close the ticket. */
+  acceptance: string[];
+  /** Files / areas in the codebase to touch. */
+  touchpoints?: string[];
+  /** Gotchas, dependencies, or decisions to settle first. */
+  notes?: string;
+}
+
+/* ── Delivery plan (Capabilities board) ───────────────────────── */
+
+export interface PlanItem {
+  /** Development-plan reference (A1, B5, …). */
+  ref: string;
+  title: string;
+  /** Delivery days (build + per-item test). */
+  days: number;
+  /** Capability domain (matches the Supported-today group names). */
+  domain: CapabilityDomain;
+}
+
+export interface PlanGroup {
+  id: string;
+  title: string;
+  /** Plain explanation of what this group does and why it matters. */
+  summary: string;
+  items: PlanItem[];
+}
+
+/** Functionality that already works and can be enabled / demonstrated now.
+ *  `testing: true` = built in the last few days; needs a final QA pass. */
+export interface AvailableItem {
+  text: string;
+  testing?: boolean;
+}
+export interface AvailableGroup {
+  group: string;
+  items: AvailableItem[];
+}
+
+/* ── Schedule (roadmap timeline) ──────────────────────────────── */
+
+export interface Bar {
+  id: string;
+  lane: string;
+  start: number; // working-day offset from project start
+  end: number;
+  days: number;
+  phaseIdx: number;
+  deps: string[];
+}
+
+export interface Schedule {
+  bars: Bar[];
+  doneIds: string[];
+  totalDays: number;
+}
+
+/* ── Stories (value-stream playback) ──────────────────────────── */
+
+export interface StoryStep {
+  module: string; // module id (z__<id> on the canvas)
+  caption: string;
+}
+
+export interface StoryDef {
+  id: string;
+  title: string;
+  tone: string; // accent colour
+  steps: StoryStep[];
+}
+
+/* ── Team ─────────────────────────────────────────────────────── */
+
+export interface Engineer {
+  /** Stable id — used as the assignee key in the persisted state. */
+  id: string;
+  /** Lane label (the capability area). */
+  lane: string;
+  /** Real engineer name once assigned; falls back to the lane label. */
+  person?: string;
+  /** Owner squad as recorded in modules.ts. */
+  squad: string;
+  /** Capability domain this lane owns end-to-end. */
+  domain?: CapabilityDomain;
+  /** Accent colour for board lanes / chips. */
+  color: string;
+}

@@ -22,15 +22,15 @@ export type OverrideMap = Record<string, Override>;
 
 const BASE = (import.meta.env.VITE_API_BASE ?? '/api').replace(/\/$/, '');
 
-export async function fetchState(signal?: AbortSignal): Promise<OverrideMap> {
-  const res = await fetch(`${BASE}/state`, { signal });
+export async function fetchState(project: string, signal?: AbortSignal): Promise<OverrideMap> {
+  const res = await fetch(`${BASE}/${encodeURIComponent(project)}/state`, { signal });
   if (!res.ok) throw new Error(`state ${res.status}`);
   const body = await res.json();
   return (body.overrides ?? {}) as OverrideMap;
 }
 
-export async function patchDeliverable(id: string, patch: Override): Promise<Override> {
-  const res = await fetch(`${BASE}/deliverable/${encodeURIComponent(id)}`, {
+export async function patchDeliverable(project: string, id: string, patch: Override): Promise<Override> {
+  const res = await fetch(`${BASE}/${encodeURIComponent(project)}/deliverable/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(patch),

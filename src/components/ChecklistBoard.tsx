@@ -1,14 +1,8 @@
 import { useState } from 'react';
 
 import { useTheme } from '../theme';
-import type { ModuleStatus, PartState } from '../model/types';
-import {
-  CHECKLIST_GROUPS,
-  CHECKLIST_MODULE_COUNT,
-  CHECKLIST_OPEN_COUNT,
-  CHECKLIST_WITH_WORK,
-  type ChecklistEntry,
-} from '../model/checklist';
+import { useProject } from '../project';
+import type { ModuleStatus, PartState, ChecklistEntry } from '../model/types';
 
 const STATUS_LABEL: Record<ModuleStatus, string> = {
   implemented: 'Implemented',
@@ -21,6 +15,13 @@ type Filter = 'all' | 'work' | 'done';
 
 export function ChecklistBoard() {
   const theme = useTheme();
+  const { checklist } = useProject();
+  const {
+    groups: CHECKLIST_GROUPS,
+    moduleCount: CHECKLIST_MODULE_COUNT,
+    openCount: CHECKLIST_OPEN_COUNT,
+    withWork: CHECKLIST_WITH_WORK,
+  } = checklist!;
   const [filter, setFilter] = useState<Filter>('all');
 
   const match = (e: ChecklistEntry) =>

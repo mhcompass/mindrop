@@ -7,18 +7,8 @@
  * these honest — where a step needs a decision or a spike, say so.
  */
 
-export interface DeliverableDetail {
-  /** What this is and why it matters — one short paragraph. */
-  summary: string;
-  /** Ordered, concrete implementation steps. */
-  steps: string[];
-  /** Definition of done — what must be true to close the ticket. */
-  acceptance: string[];
-  /** Files / areas in the codebase to touch. */
-  touchpoints?: string[];
-  /** Gotchas, dependencies, or decisions to settle first. */
-  notes?: string;
-}
+import type { DeliverableDetail } from '../../model/types';
+export type { DeliverableDetail } from '../../model/types';
 
 export const DETAILS: Record<string, DeliverableDetail> = {
   // ── Phase 0 · Stabilize the merge ───────────────────────────────────────

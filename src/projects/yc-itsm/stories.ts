@@ -3,17 +3,8 @@
  * paths through the modules they touch. The Zoom Map plays one back:
  * highlight + pan the camera step by step.
  */
-export interface StoryStep {
-  module: string; // module id (z__<id> on the canvas)
-  caption: string;
-}
-
-export interface StoryDef {
-  id: string;
-  title: string;
-  tone: string; // accent colour
-  steps: StoryStep[];
-}
+import type { StoryDef } from '../../model/types';
+export type { StoryStep, StoryDef } from '../../model/types';
 
 export const STORIES: StoryDef[] = [
   {

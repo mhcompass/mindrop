@@ -4,30 +4,10 @@
  * Status / name / note are pulled from modules.ts (single source); only
  * the work breakdown is authored here.
  */
-import type { ModuleStatus, PartState } from './types';
-import { moduleStatus } from './types';
+import { moduleStatus } from '../../model/types';
+import type { ChecklistGroup } from '../../model/types';
 import { MODULE_BY_ID } from './modules';
-
-export interface ChecklistEntry {
-  id: string;
-  name: string;
-  note?: string;
-  status: ModuleStatus;
-  ui: PartState;
-  api: PartState;
-  feOnly?: boolean;
-  /** Shipped today. */
-  delivered: string[];
-  /** Still to build or modify. */
-  todo: string[];
-}
-
-export interface ChecklistGroup {
-  id: string;
-  title: string;
-  accent: string;
-  entries: ChecklistEntry[];
-}
+export type { ChecklistEntry, ChecklistGroup } from '../../model/types';
 
 interface RawItem {
   id: string;

@@ -11,12 +11,9 @@ import { TeamBoard } from './components/TeamBoard';
 import { DetailDrawer } from './components/DetailDrawer';
 import { TeamStateProvider } from './state';
 import { ThemeContext, LIGHT, DARK } from './theme';
-import { POSTURE_NODES, POSTURE_EDGES } from './model/posture';
-import { READINESS_CARDS, READINESS_NODES, READINESS_EDGES } from './model/readiness';
-import { MASTER_NODES, MASTER_EDGES } from './model/master';
-import { TRACKER_TILES, TRACKER_NODES } from './model/modules';
-import { DEPLOY_NODES, DEPLOY_EDGES } from './model/deployment';
-import { BUILD_STAMP } from './model/stamp';
+import { ProjectProvider } from './project';
+import { getProject, DEFAULT_PROJECT, PROJECT_LIST } from './projects/registry';
+import type { ProjectModel } from './projects/types';
 
 type View = 'posture' | 'readiness' | 'master' | 'tracker' | 'clusters' | 'zoom' | 'agents' | 'checklist' | 'capabilities' | 'roadmap' | 'board' | 'deployment';
 
@@ -49,8 +46,32 @@ const VIEWS: { id: View; label: string; hint: string; group: Group }[] = [
 /** Views that render an ArchFlow canvas and want the colour legend shown. */
 const LEGEND_VIEWS = new Set<View>(['posture', 'readiness', 'master', 'deployment']);
 
+/** Which ProjectModel section gates each view — a view's tab renders only when
+ *  the active project provides that section. Roadmap + Team Board share the
+ *  single `delivery` bundle. */
+const SECTION_OF: Record<View, keyof ProjectModel> = {
+  posture: 'posture', readiness: 'readiness', master: 'master', tracker: 'tracker', deployment: 'deployment',
+  clusters: 'clusters', zoom: 'zoom', agents: 'agents', checklist: 'checklist', capabilities: 'capabilities',
+  roadmap: 'delivery', board: 'delivery',
+};
+
 const groupOf = (v: View): Group => VIEWS.find((x) => x.id === v)!.group;
-const firstViewOf = (g: Group): View => VIEWS.find((v) => v.group === g)!.id;
+
+/** Views the given project actually provides, in canonical order. */
+const viewsFor = (m: ProjectModel) => VIEWS.filter((v) => m[SECTION_OF[v.id]] != null);
+
+/** Parse the hash into { project?, view? }. `#<project>/<view>`; a bare
+ *  `#<view>` (no slash) is treated as a view under the default project. */
+function parseHash(): { project?: string; view?: string } {
+  const h = window.location.hash.replace(/^#/, '');
+  if (!h) return {};
+  const slash = h.indexOf('/');
+  if (slash === -1) return { view: h };
+  return { project: h.slice(0, slash), view: h.slice(slash + 1) };
+}
+
+const PROJECT_KEY = 'arch-map-project';
+const viewKeyFor = (pid: string) => `arch-map-view:${pid}`;
 
 const LEGEND: { label: string; light: { bg: string; border: string }; dark: { bg: string; border: string }; dashed?: boolean }[] = [
   { label: 'Live — API-backed', light: { bg: '#d5e8d4', border: '#82b366' }, dark: { bg: '#1c2f1c', border: '#82b366' } },
@@ -63,29 +84,49 @@ const LEGEND: { label: string; light: { bg: string; border: string }; dark: { bg
 
 const THEME_KEY = 'arch-map-theme';
 
-const VIEW_KEY = 'arch-map-view';
-
 export default function App() {
-  const [view, setView] = useState<View>(() => {
-    // Permalink: #<view> wins, then last-used, then default.
-    const hash = window.location.hash.replace('#', '');
-    if (VIEWS.some((v) => v.id === hash)) return hash as View;
-    const saved = localStorage.getItem(VIEW_KEY) as View | null;
-    return saved && VIEWS.some((v) => v.id === saved) ? saved : 'roadmap';
+  const [projectId, setProjectId] = useState<string>(() => {
+    const { project } = parseHash();
+    if (project && getProject(project)) return project;
+    const saved = localStorage.getItem(PROJECT_KEY);
+    if (saved && getProject(saved)) return saved;
+    return DEFAULT_PROJECT;
   });
 
-  useEffect(() => {
-    localStorage.setItem(VIEW_KEY, view);
-    if (window.location.hash.replace('#', '') !== view) {
-      window.history.replaceState(null, '', `#${view}`);
-    }
-  }, [view]);
+  const model = getProject(projectId) ?? getProject(DEFAULT_PROJECT)!;
+  const availableViews = viewsFor(model);
 
-  // Back/forward + shared links update the view.
+  const [view, setView] = useState<View>(() => {
+    const { view: hv } = parseHash();
+    if (hv && availableViews.some((v) => v.id === hv)) return hv as View;
+    const saved = localStorage.getItem(viewKeyFor(projectId)) as View | null;
+    if (saved && availableViews.some((v) => v.id === saved)) return saved;
+    return availableViews[0]?.id ?? 'roadmap';
+  });
+
+  // Clamp the view if the active project doesn't provide it (e.g. after a switch).
+  useEffect(() => {
+    if (!availableViews.some((v) => v.id === view)) setView(availableViews[0]?.id ?? 'roadmap');
+  }, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist + reflect the active project/view in the hash (#<project>/<view>).
+  useEffect(() => {
+    localStorage.setItem(PROJECT_KEY, projectId);
+    localStorage.setItem(viewKeyFor(projectId), view);
+    const target = `#${projectId}/${view}`;
+    if (window.location.hash !== target) window.history.replaceState(null, '', target);
+  }, [projectId, view]);
+
+  // Back/forward + shared links update project + view.
   useEffect(() => {
     const onHash = () => {
-      const h = window.location.hash.replace('#', '');
-      if (VIEWS.some((v) => v.id === h)) setView(h as View);
+      const { project, view: hv } = parseHash();
+      const pid = project && getProject(project) ? project : DEFAULT_PROJECT;
+      const m = getProject(pid)!;
+      const avail = viewsFor(m);
+      setProjectId(pid);
+      if (hv && avail.some((v) => v.id === hv)) setView(hv as View);
+      else setView(avail[0]?.id ?? 'roadmap');
     };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
@@ -102,28 +143,43 @@ export default function App() {
   }, [dark]);
 
   const theme = dark ? DARK : LIGHT;
-  const active = VIEWS.find((v) => v.id === view)!;
-  const activeGroup = groupOf(view);
+  // Render the resolved view (clamped above); guard against a stale value
+  // during the render before the clamp effect runs.
+  const safeView = availableViews.some((v) => v.id === view) ? view : (availableViews[0]?.id ?? view);
+  const active = availableViews.find((v) => v.id === safeView) ?? availableViews[0];
+  const activeGroup = groupOf(safeView);
+
+  // Groups that have at least one view in this project.
+  const groups = GROUPS.filter((g) => availableViews.some((v) => v.group === g.id));
+  const firstInGroup = (g: Group): View =>
+    availableViews.find((v) => v.group === g)?.id ?? availableViews[0]?.id ?? safeView;
 
   // Remember the last view visited in each group so switching groups returns
   // you to where you were, not always the group's first view.
-  const lastByGroup = useRef<Record<Group, View>>({
-    delivery: 'roadmap',
-    architecture: 'readiness',
-    ops: 'deployment',
-  });
+  const lastByGroup = useRef<Partial<Record<Group, View>>>({});
   useEffect(() => {
-    lastByGroup.current[activeGroup] = view;
-  }, [view, activeGroup]);
+    lastByGroup.current[activeGroup] = safeView;
+  }, [safeView, activeGroup]);
 
   const selectGroup = (g: Group) => {
     if (g === activeGroup) return;
-    setView(lastByGroup.current[g] ?? firstViewOf(g));
+    const last = lastByGroup.current[g];
+    setView(last && availableViews.some((v) => v.id === last) ? last : firstInGroup(g));
+  };
+
+  const selectProject = (pid: string) => {
+    if (pid === projectId || !getProject(pid)) return;
+    const m = getProject(pid)!;
+    const avail = viewsFor(m);
+    const last = localStorage.getItem(viewKeyFor(pid)) as View | null;
+    setProjectId(pid);
+    setView(last && avail.some((v) => v.id === last) ? last : (avail[0]?.id ?? 'roadmap'));
   };
 
   return (
+    <ProjectProvider model={model}>
     <ThemeContext.Provider value={theme}>
-      <TeamStateProvider>
+      <TeamStateProvider key={model.meta.id}>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: theme.app.bg }}>
         <header style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 18px', borderBottom: `1px solid ${theme.app.headerBorder}`, background: theme.app.headerBg }}>
           {/* Tier 1 — brand · group tabs · controls */}
@@ -141,14 +197,14 @@ export default function App() {
                 }}
               />
               <div>
-                <div style={{ fontSize: 16, fontWeight: 850, letterSpacing: -0.3, color: theme.app.title }}>Mindrop · Architecture Map</div>
-                <div style={{ fontSize: 11, color: theme.app.subtitle }}>{active.hint}</div>
+                <div style={{ fontSize: 16, fontWeight: 850, letterSpacing: -0.3, color: theme.app.title }}>{model.meta.brandTitle}</div>
+                <div style={{ fontSize: 11, color: theme.app.subtitle }}>{active?.hint}</div>
               </div>
             </div>
 
             {/* Group tabs — underline style, distinct from the rounded view pills. */}
             <nav style={{ display: 'flex', gap: 4, marginLeft: 8 }}>
-              {GROUPS.map((g) => {
+              {groups.map((g) => {
                 const isActive = activeGroup === g.id;
                 return (
                   <button
@@ -174,8 +230,29 @@ export default function App() {
             </nav>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto', flexWrap: 'wrap' }}>
+              {PROJECT_LIST.length > 1 && (
+                <select
+                  value={projectId}
+                  onChange={(e) => selectProject(e.target.value)}
+                  title="Switch project"
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    padding: '5px 10px',
+                    borderRadius: 999,
+                    cursor: 'pointer',
+                    border: `1.5px solid ${theme.app.tabBorder}`,
+                    background: theme.app.tabBg,
+                    color: theme.app.tabText,
+                  }}
+                >
+                  {PROJECT_LIST.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              )}
               <span
-                title={`Model reconciled with the yc-itsm codebase on ${BUILD_STAMP.date} · ${BUILD_STAMP.scope}`}
+                title={`Model reconciled with the yc-itsm codebase on ${model.meta.stamp.date} · ${model.meta.stamp.scope}`}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -191,7 +268,7 @@ export default function App() {
                 }}
               >
                 <span style={{ width: 7, height: 7, borderRadius: 999, background: '#82b366', flexShrink: 0 }} />
-                as of {BUILD_STAMP.date} · {BUILD_STAMP.profile}
+                as of {model.meta.stamp.date} · {model.meta.stamp.profile}
               </span>
               <button
                 onClick={() => setDark((d) => !d)}
@@ -216,8 +293,8 @@ export default function App() {
           {/* Tier 2 — views in the active group · legend (map views only) */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <nav style={{ display: 'flex', gap: 6 }}>
-              {VIEWS.filter((v) => v.group === activeGroup).map((v) => {
-                const isActive = view === v.id;
+              {availableViews.filter((v) => v.group === activeGroup).map((v) => {
+                const isActive = safeView === v.id;
                 return (
                   <button
                     key={v.id}
@@ -241,7 +318,7 @@ export default function App() {
               })}
             </nav>
 
-            {LEGEND_VIEWS.has(view) && (
+            {LEGEND_VIEWS.has(safeView) && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto', flexWrap: 'wrap' }}>
                 {LEGEND.map((l) => {
                   const c = dark ? l.dark : l.light;
@@ -257,31 +334,44 @@ export default function App() {
           </div>
         </header>
 
-        {view === 'posture' && (
-          <ArchFlow nodes={POSTURE_NODES} edges={POSTURE_EDGES} kinds={['live', 'planned', 'neutral']} />
+        {safeView === 'posture' && model.posture && (
+          <ArchFlow nodes={model.posture.nodes} edges={model.posture.edges} kinds={model.posture.kinds} />
         )}
-        {view === 'readiness' && (
-          <ArchFlow nodes={READINESS_NODES} edges={READINESS_EDGES} cards={READINESS_CARDS} kinds={[]} />
+        {safeView === 'readiness' && model.readiness && (
+          <ArchFlow nodes={model.readiness.nodes} edges={model.readiness.edges} cards={model.readiness.cards} kinds={model.readiness.kinds} />
         )}
-        {view === 'master' && (
-          <ArchFlow nodes={MASTER_NODES} edges={MASTER_EDGES} kinds={['live', 'seeded', 'planned', 'neutral']} />
+        {safeView === 'master' && model.master && (
+          <ArchFlow nodes={model.master.nodes} edges={model.master.edges} kinds={model.master.kinds} />
         )}
-        {view === 'tracker' && (
-          <ArchFlow nodes={TRACKER_NODES} edges={[]} tiles={TRACKER_TILES} kinds={[]} />
+        {safeView === 'tracker' && model.tracker && (
+          <ArchFlow nodes={model.tracker.nodes} edges={model.tracker.edges} tiles={model.tracker.tiles} kinds={model.tracker.kinds} />
         )}
-        {view === 'clusters' && <ClusterFlow />}
-        {view === 'zoom' && <ZoomFlow />}
-        {view === 'agents' && <AgentsBoard />}
-        {view === 'checklist' && <ChecklistBoard />}
-        {view === 'capabilities' && <CapabilitiesBoard />}
-        {view === 'roadmap' && <RoadmapBoard />}
-        {view === 'board' && <TeamBoard />}
-        {view === 'deployment' && (
-          <ArchFlow nodes={DEPLOY_NODES} edges={DEPLOY_EDGES} kinds={['live', 'planned']} />
+        {safeView === 'clusters' && model.clusters && <ClusterFlow />}
+        {safeView === 'zoom' && model.zoom && <ZoomFlow />}
+        {safeView === 'agents' && model.agents && <AgentsBoard />}
+        {safeView === 'checklist' && model.checklist && <ChecklistBoard />}
+        {safeView === 'capabilities' && model.capabilities && <CapabilitiesBoard />}
+        {safeView === 'roadmap' && model.delivery && <RoadmapBoard />}
+        {safeView === 'board' && model.delivery && <TeamBoard />}
+        {safeView === 'deployment' && model.deployment && (
+          <ArchFlow nodes={model.deployment.nodes} edges={model.deployment.edges} kinds={model.deployment.kinds} />
+        )}
+        {availableViews.length === 0 && (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40, textAlign: 'center', color: theme.app.subtitle }}>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: theme.app.title, marginBottom: 6 }}>No views yet</div>
+              <div style={{ fontSize: 13, maxWidth: 460, lineHeight: 1.5 }}>
+                <strong>{model.meta.name}</strong> has no sections. Add data + a section to
+                <code style={{ margin: '0 4px' }}>src/projects/{model.meta.id}/index.ts</code>
+                (see <code>yc-itsm</code>) to light up its views.
+              </div>
+            </div>
+          </div>
         )}
       </div>
-      <DetailDrawer />
+      {model.delivery && <DetailDrawer />}
       </TeamStateProvider>
     </ThemeContext.Provider>
+    </ProjectProvider>
   );
 }

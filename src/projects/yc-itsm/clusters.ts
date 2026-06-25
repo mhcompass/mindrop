@@ -4,18 +4,10 @@
  * Module ids reference modules.ts (single source of truth for status);
  * only the grouping lives here.
  */
-import type { ModuleStatus } from './types';
+import type { ClusterTreeDef, ClusterCounts, ClusterEdgeDef, AgentDef } from '../../model/types';
 import { MODULE_BY_ID } from './modules';
-import { moduleStatus } from './types';
-
-export interface ClusterTreeDef {
-  id: string;
-  name: string;
-  /** Accent colour slug for the cluster title strip. */
-  accent: string;
-  /** Children: nested clusters or module ids (strings → modules.ts). */
-  children: Array<ClusterTreeDef | string>;
-}
+import { moduleStatus } from '../../model/types';
+export type { ClusterTreeDef, ClusterCounts, ClusterEdgeDef, AgentDef } from '../../model/types';
 
 export const CLUSTER_TREE: ClusterTreeDef[] = [
   {
@@ -139,8 +131,6 @@ export const CLUSTER_TREE: ClusterTreeDef[] = [
 
 /* ── Helpers ──────────────────────────────────────────────────── */
 
-export type ClusterCounts = Record<ModuleStatus, number>;
-
 export function aggregateCounts(def: ClusterTreeDef): ClusterCounts {
   const counts: ClusterCounts = { implemented: 0, partial: 0, 'ui-only': 0, planned: 0 };
   const walk = (c: ClusterTreeDef) => {
@@ -168,16 +158,6 @@ export function allClusterIds(tree: ClusterTreeDef[] = CLUSTER_TREE): string[] {
 }
 
 /* ── Inter-cluster connections ────────────────────────────────── */
-
-export interface ClusterEdgeDef {
-  id: string;
-  source: string;
-  target: string;
-  label: string;
-  /** Handle hints: t(op) b(ottom) l(eft) r(ight). */
-  sh?: 't' | 'b' | 'l' | 'r';
-  th?: 't' | 'b' | 'l' | 'r';
-}
 
 /** Semantic flows between clusters. Endpoints may be sub-clusters —
  *  the view lifts an edge to the nearest visible ancestor when its
@@ -216,14 +196,6 @@ export const CLUSTER_EDGES: ClusterEdgeDef[] = [
 ];
 
 /* ── Agents working between clusters ──────────────────────────── */
-
-export interface AgentDef {
-  id: string;
-  name: string;
-  desc: string;
-  /** Cluster ids this agent works across (≥2). */
-  connects: string[];
-}
 
 /** The galaxy agents — each floats between the clusters it serves. */
 export const AGENTS: AgentDef[] = [

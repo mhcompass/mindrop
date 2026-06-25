@@ -41,11 +41,36 @@ npm run dev      # → http://localhost:5180
 - **Search** (Clusters) — spotlight filter; non-matching tiles dim
 - **Persistence** — active tab + cluster collapse state survive reloads
 
+## Projects (multi-project)
+
+The app renders one **project** at a time; switch between them with the
+project selector in the header (shown when more than one exists). The active
+project is in the URL hash as `#<project>/<view>` (e.g. `#yc-itsm/zoom`).
+
+Each project is a folder `src/projects/<id>/` whose `index.ts` assembles a
+typed **`ProjectModel`** (`src/projects/types.ts`) from its per-concern data
+files. Every view-section is optional — **a view's tab renders only when the
+project provides that section**, so projects can be as full or as sparse as
+they are. The shared data *shapes* live in `src/model/types.ts`; the registry
+of projects is `src/projects/registry.ts`.
+
+**Add a project:**
+
+```bash
+npm run new-project <slug>     # kebab-case, e.g. acme-portal
+```
+
+This scaffolds `src/projects/<slug>/index.ts` (meta only — empty tab bar) and
+registers it. Then author data files in that folder and add their sections to
+`index.ts`, copying the patterns from `src/projects/yc-itsm/` (the reference
+project, which fills every section). `npm run build` type-checks everything and
+runs each project's import-time validation (`src/projects/validate.ts`).
+
 ## Editing the model
 
-All content lives in `src/model/` — `posture.ts`, `readiness.ts`,
-`master.ts`, `modules.ts` (plain typed data, no layout engine; positions
-are absolute px except the tracker, which auto-grids). Change status
+A project's content lives in `src/projects/<id>/` — `posture.ts`,
+`readiness.ts`, `master.ts`, `modules.ts` (plain typed data, no layout engine;
+positions are absolute px except the tracker, which auto-grids). Change status
 colours / add nodes there; rendering is generic in `src/components/`.
 
 **Tracking progress:** `modules.ts` is the file to touch when something

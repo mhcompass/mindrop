@@ -1,15 +1,8 @@
 import { useState } from 'react';
 
 import { useTheme } from '../theme';
-import type { AgentStatus, ModuleStatus } from '../model/types';
-import {
-  AGENT_CARDS,
-  AGENT_COUNTS,
-  AGENT_STATUS_LABEL,
-  AGENT_STATUS_ORDER,
-  AGENT_STATUS_PILL,
-  type AgentCard,
-} from '../model/agents';
+import { useProject } from '../project';
+import type { AgentStatus, ModuleStatus, AgentCard } from '../model/types';
 
 const STATUS_DOT: Record<ModuleStatus, string> = {
   implemented: '#82b366',
@@ -22,6 +15,13 @@ type Filter = AgentStatus | 'all';
 
 export function AgentsBoard() {
   const theme = useTheme();
+  const { agents } = useProject();
+  const {
+    cards: AGENT_CARDS,
+    counts: AGENT_COUNTS,
+    label: AGENT_STATUS_LABEL,
+    order: AGENT_STATUS_ORDER,
+  } = agents!;
   const [filter, setFilter] = useState<Filter>('all');
 
   const ordered = [...AGENT_CARDS].sort(
@@ -88,6 +88,8 @@ export function AgentsBoard() {
 
 function Card({ card }: { card: AgentCard }) {
   const theme = useTheme();
+  const { agents } = useProject();
+  const { pill: AGENT_STATUS_PILL, label: AGENT_STATUS_LABEL } = agents!;
   const pill = theme.tile.pill[AGENT_STATUS_PILL[card.status]];
 
   return (

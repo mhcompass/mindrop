@@ -4,8 +4,8 @@
  * ships: flip `ui` / `api` between 'none' → 'partial' → 'done' and
  * the tile, pill and summary counts update everywhere.
  */
-import type { ArchNodeDef, ModuleTileDef, ModuleEdgeDef, PlacedTile, ModuleStatus } from './types';
-import { moduleStatus } from './types';
+import type { ArchNodeDef, ModuleTileDef, ModuleEdgeDef, PlacedTile, ModuleStatus } from '../../model/types';
+import { moduleStatus } from '../../model/types';
 
 function m(id: string, name: string, ui: ModuleTileDef['ui'], api: ModuleTileDef['api'], note?: string, feOnly?: boolean, meta?: Partial<ModuleTileDef>): ModuleTileDef {
   return { id, name, ui, api, note, feOnly, ...meta };

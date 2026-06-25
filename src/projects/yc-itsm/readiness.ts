@@ -5,7 +5,7 @@
  * shipped, so the pillars are now backend-live; the remaining ✗/◐ rows are
  * the genuinely-open work, aligned with the Roadmap phases.
  */
-import type { ArchNodeDef, ArchEdgeDef, ReadinessCardDef, ReadinessRow, Status } from './types';
+import type { ArchNodeDef, ArchEdgeDef, ReadinessCardDef, ReadinessRow, Status } from '../../model/types';
 
 function r(m: ReadinessRow['m'], t: string): ReadinessRow {
   return { m, t };

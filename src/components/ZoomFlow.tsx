@@ -30,11 +30,21 @@ import { toPng } from 'html-to-image';
 
 import { ModuleInspector, PILL_LABEL, Ports } from './nodes';
 import { useTheme } from '../theme';
-import { CLUSTER_TREE, aggregateCounts, type ClusterTreeDef } from '../model/clusters';
-import { MODULE_BY_ID, MODULE_EDGES } from '../model/modules';
-import { DB_DOMAINS, DB_TABLE_COUNT, TABLE_BY_ID, TABLE_TO_STATUS, type DbDomainDef, type TableStatus } from '../model/dbschema';
-import { STORIES } from '../model/stories';
-import { moduleStatus, type AgentStatus, type EdgeAgentDef, type ModuleStatus, type ModuleTileDef } from '../model/types';
+import { useProject } from '../project';
+import type { ZoomData } from '../projects/types';
+import { moduleStatus } from '../model/types';
+import type { AgentStatus, EdgeAgentDef, ModuleStatus, ModuleTileDef, ClusterTreeDef, DbDomainDef, DbTableDef, TableStatus } from '../model/types';
+
+/** A resolved table row as stored in the zoom section's tableById map. */
+type ZTableRow = DbTableDef & { domain: string; owner: string };
+
+/**
+ * Active project's zoom data, bound at the top of ZoomFlowInner each render.
+ * The layout helpers and memoized node components below read it through this
+ * module-scoped handle — only one project renders at a time, so this avoids
+ * threading the section through ~15 helpers and React-Flow node components.
+ */
+let Z: ZoomData;
 
 /* ── Overlay modes (recolour module cards by a chosen dimension) ── */
 
@@ -68,7 +78,7 @@ interface ZoomCtxValue {
 }
 const ZoomCtx = createContext<ZoomCtxValue>({ overlay: 'status', dimmed: null, highlight: null });
 
-const MODULE_IDS = Object.keys(MODULE_BY_ID);
+const moduleIds = () => Object.keys(Z.moduleById);
 
 /* ── Zoom bands ───────────────────────────────────────────────── */
 
@@ -319,7 +329,7 @@ const ZTable = memo(({ data }: NodeProps) => {
   const theme = useTheme();
   const far = zoom < FAR;
   const near = zoom >= NEAR;
-  const pill = theme.tile.pill[TABLE_TO_STATUS[d.status]];
+  const pill = theme.tile.pill[Z.tableToStatus[d.status]];
 
   return (
     <div
@@ -447,7 +457,7 @@ function ZoomLegend({
     rows = LEGEND_ITEMS.map(({ status }) => ({ color: theme.tile.pill[status].fg, label: PILL_LABEL[status], status }));
   } else if (overlay === 'owner') {
     title = 'Owner';
-    const owners = Array.from(new Set(MODULE_IDS.map((id) => MODULE_BY_ID[id].owner).filter(Boolean))) as string[];
+    const owners = Array.from(new Set(moduleIds().map((id) => Z.moduleById[id].owner).filter(Boolean))) as string[];
     rows = owners.map((o) => ({ color: ownerColor(o), label: o }));
   } else if (overlay === 'effort') {
     title = 'Build effort';
@@ -571,7 +581,7 @@ function layoutZCluster(def: ClusterTreeDef, depth: 0 | 1): Measured {
   for (const child of def.children) {
     let item: Measured;
     if (typeof child === 'string') {
-      const mod = MODULE_BY_ID[child];
+      const mod = Z.moduleById[child];
       item = {
         w: MOD_W,
         h: MOD_H,
@@ -605,7 +615,7 @@ function layoutZCluster(def: ClusterTreeDef, depth: 0 | 1): Measured {
 
   const w = Math.max(usedW + PAD, depth === 0 ? 760 : 520);
   const h = y + rowH + PAD;
-  const counts = aggregateCounts(def);
+  const counts = Z.aggregateCounts(def);
   const total = counts.implemented + counts.partial + counts['ui-only'] + counts.planned;
   const self: Node = {
     id: `z_${def.id}`,
@@ -664,7 +674,7 @@ function layoutDbModel(): Measured {
   let rowH = 0;
   let usedW = 0;
   const childNodes: Node[] = [];
-  for (const dom of DB_DOMAINS) {
+  for (const dom of Z.dbDomains) {
     const item = layoutDbDomain(dom);
     if (x > PAD && x + item.w > DM_MAX_W) {
       x = PAD;
@@ -684,7 +694,7 @@ function layoutDbModel(): Measured {
     id: 'z_c_datamodel',
     type: 'zbubble',
     position: { x: 0, y: 0 },
-    data: { name: 'Data Model', accent: DATAMODEL_ACCENT, depth: 0, w, h, total: DB_TABLE_COUNT, unit: 'table', subtitle: 'Postgres schema' },
+    data: { name: 'Data Model', accent: DATAMODEL_ACCENT, depth: 0, w, h, total: Z.dbTableCount, unit: 'table', subtitle: 'Postgres schema' },
     draggable: false,
     zIndex: 0,
   };
@@ -696,7 +706,7 @@ function layoutZRoot(): { nodes: Node[]; rects: Map<string, Rect> } {
   let y = 0;
   let rowH = 0;
   const nodes: Node[] = [];
-  for (const def of CLUSTER_TREE) {
+  for (const def of Z.tree) {
     const item = layoutZCluster(def, 0);
     if (x > 0 && x + item.w > ROOT_MAX_W) {
       x = 0;
@@ -744,11 +754,12 @@ export function ZoomFlow() {
 }
 
 function ZoomFlowInner() {
+  Z = useProject().zoom!;
   const theme = useTheme();
   const rf = useReactFlow();
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [inspect, setInspect] = useState<ModuleTileDef | null>(null);
-  const [inspectTable, setInspectTable] = useState<(typeof TABLE_BY_ID)[string] | null>(null);
+  const [inspectTable, setInspectTable] = useState<ZTableRow | null>(null);
   const [inspectAgent, setInspectAgent] = useState<{ agent: EdgeAgentDef; from: string; to: string } | null>(null);
   const [showConnections, setShowConnections] = useState(true);
   const [showAgents, setShowAgents] = useState(true);
@@ -768,7 +779,7 @@ function ZoomFlowInner() {
   // the giant names); fade in once module cards are readable.
   const edges = useMemo<Edge[]>(() => {
     if (!showConnections || band === 'far') return [];
-    return MODULE_EDGES.map((e) => ({
+    return Z.moduleEdges.map((e) => ({
       id: e.id,
       source: `z__${e.source}`,
       target: `z__${e.target}`,
@@ -802,7 +813,7 @@ function ZoomFlowInner() {
     const out: Node[] = [];
     const W = 152;
     const H = 28;
-    for (const e of MODULE_EDGES) {
+    for (const e of Z.moduleEdges) {
       if (!e.agent) continue;
       const a = rects.get(`z__${e.source}`);
       const b = rects.get(`z__${e.target}`);
@@ -824,16 +835,16 @@ function ZoomFlowInner() {
   }, [showAgents, band, rects]);
 
   /* ── Filter + story focus → dim set + highlight ── */
-  const activeStory = story ? STORIES.find((s) => s.id === story.id) ?? null : null;
+  const activeStory = story ? Z.stories.find((s) => s.id === story.id) ?? null : null;
   const highlight = activeStory ? activeStory.steps[story!.step]?.module ?? null : null;
   const dimmed = useMemo<Set<string> | null>(() => {
     if (activeStory) {
       const keep = new Set(activeStory.steps.map((s) => s.module));
-      return new Set(MODULE_IDS.filter((id) => !keep.has(id)));
+      return new Set(moduleIds().filter((id) => !keep.has(id)));
     }
     if (statusFilter.size > 0) {
-      return new Set(MODULE_IDS.filter((id) => {
-        const m = MODULE_BY_ID[id];
+      return new Set(moduleIds().filter((id) => {
+        const m = Z.moduleById[id];
         return m && !statusFilter.has(moduleStatus(m));
       }));
     }
@@ -896,20 +907,20 @@ function ZoomFlowInner() {
         proOptions={{ hideAttribution: true }}
         onNodeClick={(_e, node) => {
           if (node.type === 'zagent') {
-            const ed = MODULE_EDGES.find((x) => `ag__${x.id}` === node.id);
+            const ed = Z.moduleEdges.find((x) => `ag__${x.id}` === node.id);
             if (ed?.agent) {
-              setInspectAgent({ agent: ed.agent, from: MODULE_BY_ID[ed.source]?.name ?? ed.source, to: MODULE_BY_ID[ed.target]?.name ?? ed.target });
+              setInspectAgent({ agent: ed.agent, from: Z.moduleById[ed.source]?.name ?? ed.source, to: Z.moduleById[ed.target]?.name ?? ed.target });
               setInspect(null); setInspectTable(null);
             }
             return;
           }
           if (node.type === 'ztable') {
-            const tb = TABLE_BY_ID[node.id.replace('z__', '')];
+            const tb = Z.tableById[node.id.replace('z__', '')];
             if (tb) { setInspectTable(tb); setInspect(null); setInspectAgent(null); }
             return;
           }
           if (node.type === 'zmodule') {
-            const mod = MODULE_BY_ID[node.id.replace('z__', '')];
+            const mod = Z.moduleById[node.id.replace('z__', '')];
             if (mod) { setInspect(mod); setInspectTable(null); setInspectAgent(null); }
             return;
           }
@@ -927,10 +938,10 @@ function ZoomFlowInner() {
           nodeColor={(n) => {
             if (n.type === 'zbubble') return ((n.data as { accent?: string }).accent ?? '#94a3b8') + '66';
             const key = n.id.replace('z__', '');
-            const mod = MODULE_BY_ID[key];
+            const mod = Z.moduleById[key];
             if (mod) return theme.tile.pill[moduleStatus(mod)].fg;
-            const tb = TABLE_BY_ID[key];
-            return tb ? theme.tile.pill[TABLE_TO_STATUS[tb.status]].fg : '#94a3b8';
+            const tb = Z.tableById[key];
+            return tb ? theme.tile.pill[Z.tableToStatus[tb.status]].fg : '#94a3b8';
           }}
         />
       </ReactFlow>
@@ -951,7 +962,7 @@ function ZoomFlowInner() {
       {/* Top-centre — value-stream story playback */}
       <div style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 6, alignItems: 'center', background: theme.canvas.panelBg, border: `1px solid ${theme.canvas.panelBorder}`, borderRadius: 999, padding: '5px 10px', boxShadow: theme.dark ? '0 1px 4px rgba(0,0,0,0.5)' : '0 1px 4px rgba(0,0,0,0.1)' }}>
         <span style={{ fontSize: 10.5, fontWeight: 700, color: theme.app.subtitle }}>▶ Play story</span>
-        {STORIES.map((s) => (
+        {Z.stories.map((s) => (
           <button key={s.id} title={s.title} onClick={() => setStory({ id: s.id, step: 0 })} style={{ width: 24, height: 24, borderRadius: 999, cursor: 'pointer', fontSize: 11, fontWeight: 800, border: `1.5px solid ${story?.id === s.id ? s.tone : theme.app.tabBorder}`, background: story?.id === s.id ? s.tone : 'transparent', color: story?.id === s.id ? '#fff' : theme.app.tabText }}>{s.id}</button>
         ))}
       </div>
@@ -1025,9 +1036,9 @@ function AgentInspector({ data, onClose }: { data: { agent: EdgeAgentDef; from: 
 
 /* ── Table inspector ──────────────────────────────────────────── */
 
-function TableInspector({ table, onClose }: { table: (typeof TABLE_BY_ID)[string]; onClose: () => void }) {
+function TableInspector({ table, onClose }: { table: ZTableRow; onClose: () => void }) {
   const theme = useTheme();
-  const pill = theme.tile.pill[TABLE_TO_STATUS[table.status]];
+  const pill = theme.tile.pill[Z.tableToStatus[table.status]];
   const label = table.status === 'live' ? 'Live' : table.status === 'partial' ? 'Partial' : 'To build';
   return (
     <div style={{ position: 'absolute', bottom: 14, left: 14, width: 320, background: theme.inspector.bg, border: `1px solid ${theme.inspector.border}`, borderRadius: 12, padding: '12px 14px', boxShadow: theme.dark ? '0 4px 16px rgba(0,0,0,0.6)' : '0 4px 16px rgba(0,0,0,0.15)' }}>
@@ -1042,7 +1053,7 @@ function TableInspector({ table, onClose }: { table: (typeof TABLE_BY_ID)[string
       </div>
       {table.note && <div style={{ fontSize: 11.5, color: theme.inspector.text, lineHeight: 1.45, marginBottom: 7 }}>{table.note}</div>}
       <div style={{ fontSize: 10.5, color: theme.app.subtitle }}>
-        owned by <span style={{ fontWeight: 700, color: theme.inspector.text }}>{MODULE_BY_ID[table.owner]?.name ?? table.owner}</span>
+        owned by <span style={{ fontWeight: 700, color: theme.inspector.text }}>{Z.moduleById[table.owner]?.name ?? table.owner}</span>
       </div>
     </div>
   );

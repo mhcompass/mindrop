@@ -7,22 +7,30 @@
  */
 
 import { useTheme } from '../theme';
+import { useProject } from '../project';
 import { useTeamState } from '../state';
-import { ENGINEER_BY_ID, ENGINEERS, UNASSIGNED } from '../model/team';
-import { ROADMAP, type Deliverable } from '../model/roadmap';
-import { computeSchedule, WORK_DAYS_PER_WEEK, type Bar } from '../model/schedule';
+import type { Deliverable, Bar } from '../model/types';
 
 const LANE_W = 134;
 const ROW_H = 46;
 const AXIS_H = 26;
 
-const BY_ID: Record<string, Deliverable> = Object.fromEntries(ROADMAP.flatMap((p) => p.items.map((d) => [d.id, d])));
-const laneColor = (id: string) => ENGINEER_BY_ID[id]?.color ?? '#94a3b8';
-const laneOrder = [...ENGINEERS.map((e) => e.id), UNASSIGNED];
-
 export function RoadmapTimeline() {
   const theme = useTheme();
+  const { delivery } = useProject();
+  const {
+    engineers: ENGINEERS,
+    engineerById: ENGINEER_BY_ID,
+    unassigned: UNASSIGNED,
+    roadmap: ROADMAP,
+    computeSchedule,
+    workDaysPerWeek: WORK_DAYS_PER_WEEK,
+  } = delivery!;
   const { assigneeOf, statusOf, openDetail } = useTeamState();
+
+  const BY_ID: Record<string, Deliverable> = Object.fromEntries(ROADMAP.flatMap((p) => p.items.map((d): [string, Deliverable] => [d.id, d])));
+  const laneColor = (id: string) => ENGINEER_BY_ID[id]?.color ?? '#94a3b8';
+  const laneOrder = [...ENGINEERS.map((e) => e.id), UNASSIGNED];
 
   const laneOf = (id: string) => assigneeOf(BY_ID[id]);
   const isDone = (id: string) => statusOf(BY_ID[id]) === 'done';
@@ -146,7 +154,7 @@ export function RoadmapTimeline() {
                   ),
                 )}
                 {bars.filter((b) => b.lane === l).map((b) => (
-                  <BarBlock key={b.id} b={b} theme={theme} spanDays={spanDays} onClick={() => openDetail(b.id)} />
+                  <BarBlock key={b.id} b={b} theme={theme} spanDays={spanDays} onClick={() => openDetail(b.id)} byId={BY_ID} laneColor={laneColor} />
                 ))}
               </div>
             ))}
@@ -157,15 +165,15 @@ export function RoadmapTimeline() {
   );
 }
 
-function BarBlock({ b, theme, spanDays, onClick }: { b: Bar; theme: ReturnType<typeof useTheme>; spanDays: number; onClick: () => void }) {
+function BarBlock({ b, theme, spanDays, onClick, byId, laneColor }: { b: Bar; theme: ReturnType<typeof useTheme>; spanDays: number; onClick: () => void; byId: Record<string, Deliverable>; laneColor: (id: string) => string }) {
   const { statusOf } = useTeamState();
-  const d = BY_ID[b.id];
+  const d = byId[b.id];
   const status = statusOf(d);
   const color = laneColor(b.lane);
   const wip = status === 'wip';
   const leftPct = (b.start / spanDays) * 100;
   const widthPct = (b.days / spanDays) * 100;
-  const depHint = b.deps.length ? ` · after ${b.deps.map((x) => short(BY_ID[x]?.text ?? x, 18)).join(', ')}` : '';
+  const depHint = b.deps.length ? ` · after ${b.deps.map((x) => short(byId[x]?.text ?? x, 18)).join(', ')}` : '';
 
   return (
     <button
@@ -200,6 +208,8 @@ function BarBlock({ b, theme, spanDays, onClick }: { b: Bar; theme: ReturnType<t
 }
 
 function Legend({ theme }: { theme: ReturnType<typeof useTheme> }) {
+  const { delivery } = useProject();
+  const ENGINEERS = delivery!.engineers;
   return (
     <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center', fontSize: 10.5, color: theme.tile.note }}>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>

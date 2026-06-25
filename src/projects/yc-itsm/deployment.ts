@@ -2,7 +2,7 @@
  * Deployment / runtime topology — the docker-compose stack and the
  * sovereign (air-gappable) boundary. Rendered by the generic ArchFlow.
  */
-import type { ArchNodeDef, ArchEdgeDef, Status } from './types';
+import type { ArchNodeDef, ArchEdgeDef, Status } from '../../model/types';
 
 function n(id: string, label: string, x: number, y: number, w: number, h: number, status: Status, extra?: Partial<ArchNodeDef>): ArchNodeDef {
   return { id, label, x, y, w, h, status, ...extra };

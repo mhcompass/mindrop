@@ -12,6 +12,8 @@
  */
 
 import { ROADMAP } from './roadmap';
+import type { Bar, Schedule } from '../../model/types';
+export type { Bar, Schedule } from '../../model/types';
 
 /** Working-day estimate + hard dependencies per deliverable id.
  *  Estimates for A/B items come from the original Delivery Plan; the rest are
@@ -56,22 +58,6 @@ export const WORK: Record<string, { days: number; deps?: string[] }> = {
 
 const DEFAULT_DAYS = 2;
 export const WORK_DAYS_PER_WEEK = 5;
-
-export interface Bar {
-  id: string;
-  lane: string;
-  start: number; // working-day offset from project start
-  end: number;
-  days: number;
-  phaseIdx: number;
-  deps: string[];
-}
-
-export interface Schedule {
-  bars: Bar[];
-  doneIds: string[];
-  totalDays: number;
-}
 
 const daysOf = (id: string) => WORK[id]?.days ?? DEFAULT_DAYS;
 const depsOf = (id: string) => WORK[id]?.deps ?? [];

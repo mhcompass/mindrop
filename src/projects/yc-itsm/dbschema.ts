@@ -6,25 +6,8 @@
  * status: live = table exists today · partial = exists but demo-grade ·
  *         planned = ships with the ITSM backend modules (incidents, …).
  */
-import type { ModuleStatus } from './types';
-
-export type TableStatus = 'live' | 'partial' | 'planned';
-
-export interface DbTableDef {
-  id: string;
-  name: string;
-  status: TableStatus;
-  note?: string;
-  /** Owning module id (defaults to the domain owner below). */
-  owner?: string;
-}
-
-export interface DbDomainDef {
-  id: string;
-  name: string;
-  accent: string;
-  tables: DbTableDef[];
-}
+import type { ModuleStatus, TableStatus, DbTableDef, DbDomainDef } from '../../model/types';
+export type { TableStatus, DbTableDef, DbDomainDef } from '../../model/types';
 
 /** Table status → the shared pill palette key. */
 export const TABLE_TO_STATUS: Record<TableStatus, ModuleStatus> = {

@@ -3,7 +3,7 @@
  * (existing or missing) API → module → store.
  * Transcribed from draw.io page 3 "Master Connected Map".
  */
-import type { ArchNodeDef, ArchEdgeDef, Status } from './types';
+import type { ArchNodeDef, ArchEdgeDef, Status } from '../../model/types';
 
 function n(id: string, label: string, x: number, y: number, w: number, h: number, status: Status, extra?: Partial<ArchNodeDef>): ArchNodeDef {
   return { id, label, x, y, w, h, status, ...extra };

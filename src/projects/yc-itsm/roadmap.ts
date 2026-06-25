@@ -15,34 +15,8 @@
  * stamp.ts.
  */
 
-import type { CapabilityDomain } from './plan3';
-
-export type DeliverableStatus = 'done' | 'wip' | 'todo';
-
-export interface Deliverable {
-  /** Stable id — the key the tracker API persists status/assignee against.
-   *  Never reuse or renumber; changing it orphans the saved state. */
-  id: string;
-  /** The deliverable, phrased as the unit of work that gets checked off. */
-  text: string;
-  /** Short clarifier — where it stands or why it matters. */
-  note?: string;
-  status: DeliverableStatus;
-  /** Capability domain this advances — cross-ref to the Capabilities board. */
-  domain?: CapabilityDomain;
-  /** Delivery-plan workstream id (A1, B5, …) — cross-ref to the Delivery Plan. */
-  planRef?: string;
-  /** Module id in modules.ts — cross-ref to the Module Tracker. */
-  module?: string;
-}
-
-export interface RoadmapPhase {
-  id: string;
-  title: string;
-  /** One-line "what should be implemented" for the phase. */
-  intent: string;
-  items: Deliverable[];
-}
+import type { RoadmapPhase, DeliverableStatus } from '../../model/types';
+export type { Deliverable, RoadmapPhase, DeliverableStatus } from '../../model/types';
 
 export const ROADMAP_INTRO =
   'The product is substantially built — ITIL records, the platform core, ' +

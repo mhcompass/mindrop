@@ -4,25 +4,10 @@
  * status/purpose/tools stay in one source of truth. Here we only add the
  * card-specific breakdown: what part is implemented vs. not yet.
  */
-import type { AgentStatus, ModuleStatus } from './types';
-import { moduleStatus } from './types';
+import type { AgentStatus, ModuleStatus, AgentCard } from '../../model/types';
+import { moduleStatus } from '../../model/types';
 import { MODULE_EDGES, MODULE_BY_ID } from './modules';
-
-export interface AgentCard {
-  /** Source edge id. */
-  id: string;
-  name: string;
-  status: AgentStatus;
-  /** One-line purpose. */
-  purpose: string;
-  tools: string[];
-  /** Capabilities that are wired today. */
-  live: string[];
-  /** Capabilities that are still scripted / to build. */
-  pending: string[];
-  from: { id: string; name: string; status: ModuleStatus };
-  to: { id: string; name: string; status: ModuleStatus };
-}
+export type { AgentCard } from '../../model/types';
 
 /** Implemented-vs-pending breakdown, keyed by the agent's edge id. */
 const DETAIL: Record<string, { live: string[]; pending: string[] }> = {

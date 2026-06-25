@@ -8,8 +8,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { fetchState, patchDeliverable, type OverrideMap, type Status } from './api';
-import { defaultEngineerForDomain } from './model/team';
-import { ROADMAP, type Deliverable } from './model/roadmap';
+import { useProject } from './project';
+import type { Deliverable } from './model/types';
 
 type Conn = 'loading' | 'online' | 'offline';
 
@@ -29,21 +29,29 @@ interface TeamState {
 
 const Ctx = createContext<TeamState | null>(null);
 
-/** Defaults indexed by id, computed once from the static roadmap. */
-const DEFAULTS: Record<string, { status: Status; assignee: string }> = Object.fromEntries(
-  ROADMAP.flatMap((p) =>
-    p.items.map((d) => [d.id, { status: d.status, assignee: defaultEngineerForDomain(d.domain) }]),
-  ),
-);
-
 export function TeamStateProvider({ children }: { children: ReactNode }) {
+  const { meta, delivery } = useProject();
   const [overrides, setOverrides] = useState<OverrideMap>({});
   const [conn, setConn] = useState<Conn>('loading');
   const [detailId, setDetailId] = useState<string | null>(null);
 
+  /** Defaults indexed by id, derived from the active project's roadmap. */
+  const DEFAULTS = useMemo<Record<string, { status: Status; assignee: string }>>(
+    () =>
+      Object.fromEntries(
+        (delivery?.roadmap ?? []).flatMap((p) =>
+          p.items.map((d): [string, { status: Status; assignee: string }] => [
+            d.id,
+            { status: d.status, assignee: delivery!.defaultEngineerForDomain(d.domain) },
+          ]),
+        ),
+      ),
+    [delivery],
+  );
+
   useEffect(() => {
     const ac = new AbortController();
-    fetchState(ac.signal)
+    fetchState(meta.id, ac.signal)
       .then((o) => {
         setOverrides(o);
         setConn('online');
@@ -52,16 +60,17 @@ export function TeamStateProvider({ children }: { children: ReactNode }) {
         if (e?.name !== 'AbortError') setConn('offline');
       });
     return () => ac.abort();
-  }, []);
+  }, [meta.id]);
 
   const statusOf = useCallback(
     (d: Deliverable): Status => overrides[d.id]?.status ?? DEFAULTS[d.id]?.status ?? d.status,
-    [overrides],
+    [overrides, DEFAULTS],
   );
 
   const assigneeOf = useCallback(
-    (d: Deliverable): string => overrides[d.id]?.assignee ?? DEFAULTS[d.id]?.assignee ?? defaultEngineerForDomain(d.domain),
-    [overrides],
+    (d: Deliverable): string =>
+      overrides[d.id]?.assignee ?? DEFAULTS[d.id]?.assignee ?? delivery?.defaultEngineerForDomain(d.domain) ?? 'unassigned',
+    [overrides, DEFAULTS, delivery],
   );
 
   const update = useCallback<TeamState['update']>(
@@ -70,7 +79,7 @@ export function TeamStateProvider({ children }: { children: ReactNode }) {
       // Optimistic local apply.
       setOverrides((o) => ({ ...o, [id]: { ...o[id], ...patch } }));
       if (conn === 'offline') return;
-      patchDeliverable(id, patch)
+      patchDeliverable(meta.id, id, patch)
         .then((saved) => {
           setOverrides((o) => ({ ...o, [id]: { ...o[id], ...saved } }));
           setConn('online');
@@ -81,7 +90,7 @@ export function TeamStateProvider({ children }: { children: ReactNode }) {
           setConn('offline');
         });
     },
-    [overrides, conn],
+    [overrides, conn, meta.id],
   );
 
   const openDetail = useCallback((id: string) => setDetailId(id), []);

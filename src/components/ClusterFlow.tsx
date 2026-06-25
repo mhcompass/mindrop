@@ -15,19 +15,9 @@ import '@xyflow/react/dist/style.css';
 
 import { NODE_TYPES, ModuleInspector } from './nodes';
 import { useTheme } from '../theme';
-import type { ModuleTileDef } from '../model/types';
-import {
-  CLUSTER_TREE,
-  CLUSTER_EDGES,
-  CLUSTER_NAME,
-  AGENTS,
-  aggregateCounts,
-  allClusterIds,
-  clusterChain,
-  type AgentDef,
-  type ClusterTreeDef,
-} from '../model/clusters';
-import { MODULE_BY_ID } from '../model/modules';
+import { useProject } from '../project';
+import type { ClustersData } from '../projects/types';
+import type { ModuleTileDef, ClusterTreeDef, AgentDef } from '../model/types';
 
 /* ── Layout constants ─────────────────────────────────────────── */
 
@@ -55,8 +45,9 @@ function layoutCluster(
   depth: number,
   collapsed: Set<string>,
   toggle: (id: string) => void,
+  cx: ClustersData,
 ): Measured {
-  const counts = aggregateCounts(def);
+  const counts = cx.aggregateCounts(def);
   const isCollapsed = collapsed.has(def.id);
 
   const clusterNode = (w: number, h: number): Node => ({
@@ -93,7 +84,7 @@ function layoutCluster(
   for (const child of def.children) {
     let item: Measured;
     if (typeof child === 'string') {
-      const mod = MODULE_BY_ID[child];
+      const mod = cx.moduleById[child];
       item = {
         w: TILE_W,
         h: TILE_H,
@@ -108,7 +99,7 @@ function layoutCluster(
         ],
       };
     } else {
-      item = layoutCluster(child, depth + 1, collapsed, toggle);
+      item = layoutCluster(child, depth + 1, collapsed, toggle, cx);
     }
 
     if (x > PAD && x + item.w > maxW) {
@@ -132,8 +123,8 @@ function layoutCluster(
 
 /** Pack the top-level clusters onto the canvas. When everything is
  *  collapsed, wrap into a compact card grid instead of one long row. */
-function layoutRoot(collapsed: Set<string>, toggle: (id: string) => void): Node[] {
-  const allTopCollapsed = CLUSTER_TREE.every((c) => collapsed.has(c.id));
+function layoutRoot(collapsed: Set<string>, toggle: (id: string) => void, cx: ClustersData): Node[] {
+  const allTopCollapsed = cx.tree.every((c) => collapsed.has(c.id));
   const ROOT_MAX_W = allTopCollapsed ? 1600 : 2700;
   // Collapsed grid breathes more so agent pills + edges have room.
   const gapX = allTopCollapsed ? 60 : GAP * 2;
@@ -142,8 +133,8 @@ function layoutRoot(collapsed: Set<string>, toggle: (id: string) => void): Node[
   let y = 0;
   let rowH = 0;
   const nodes: Node[] = [];
-  for (const def of CLUSTER_TREE) {
-    const item = layoutCluster(def, 0, collapsed, toggle);
+  for (const def of cx.tree) {
+    const item = layoutCluster(def, 0, collapsed, toggle, cx);
     if (x > 0 && x + item.w > ROOT_MAX_W) {
       x = 0;
       y += rowH + gapY;
@@ -184,21 +175,22 @@ function buildAgents(
   layoutNodes: Node[],
   collapsed: Set<string>,
   stroke: string,
+  cx: ClustersData,
 ): { nodes: Node[]; edges: Edge[] } {
   const centers = absCenters(layoutNodes);
   const nodes: Node[] = [];
   const edges: Edge[] = [];
   const placed: { x: number; y: number }[] = [];
-  for (const agent of AGENTS) {
-    const reps = [...new Set(agent.connects.map((c) => representative(c, collapsed)))].filter((r) => centers.has(r));
+  for (const agent of cx.agents) {
+    const reps = [...new Set(agent.connects.map((c) => representative(c, collapsed, cx)))].filter((r) => centers.has(r));
     if (reps.length < 2) continue; // everything folded into one box — agent lives inside it
     const pts = reps.map((r) => centers.get(r)!);
-    const cx = pts.reduce((a, p) => a + p.cx, 0) / pts.length;
-    const cy = pts.reduce((a, p) => a + p.cy, 0) / pts.length;
+    const mx = pts.reduce((a, p) => a + p.cx, 0) / pts.length;
+    const my = pts.reduce((a, p) => a + p.cy, 0) / pts.length;
     // Collision relaxation: agents whose midpoints land in the same
     // gap stack on each other — nudge down until clear of all others.
-    let x = cx - AGENT_W / 2;
-    let y = cy - AGENT_H / 2;
+    let x = mx - AGENT_W / 2;
+    let y = my - AGENT_H / 2;
     const collides = () =>
       placed.some((p) => Math.abs(p.x - x) < AGENT_W + 16 && Math.abs(p.y - y) < AGENT_H + 12);
     let guard = 0;
@@ -240,19 +232,19 @@ const EDGE_HANDLE: Record<string, { s: string; t: string }> = {
 
 /** Nearest rendered representative of a cluster: itself, unless an
  *  ancestor is collapsed — then the outermost collapsed ancestor. */
-function representative(id: string, collapsed: Set<string>): string {
-  for (const ancestor of clusterChain(id)) {
+function representative(id: string, collapsed: Set<string>, cx: ClustersData): string {
+  for (const ancestor of cx.clusterChain(id)) {
     if (collapsed.has(ancestor)) return ancestor;
   }
   return id;
 }
 
-function buildEdges(collapsed: Set<string>, stroke: string, label: { text: string; bg: string }, hideLabels: boolean): Edge[] {
+function buildEdges(collapsed: Set<string>, stroke: string, label: { text: string; bg: string }, hideLabels: boolean, cx: ClustersData): Edge[] {
   // Group by lifted endpoint pair so merged flows render as one edge.
   const grouped = new Map<string, { id: string; source: string; target: string; lifted: boolean; count: number; nativeLabel: string; sh?: string; th?: string }>();
-  for (const e of CLUSTER_EDGES) {
-    const source = representative(e.source, collapsed);
-    const target = representative(e.target, collapsed);
+  for (const e of cx.edges) {
+    const source = representative(e.source, collapsed, cx);
+    const target = representative(e.target, collapsed, cx);
     if (source === target) continue; // both ends inside the same collapsed cluster
     const lifted = source !== e.source || target !== e.target;
     const key = `${source}->${target}`;
@@ -300,9 +292,11 @@ const COLLAPSED_KEY = 'arch-map-collapsed';
 function ClusterFlowInner() {
   const theme = useTheme();
   const rf = useReactFlow();
+  const { clusters } = useProject();
+  const cx = clusters!;
   const [collapsed, setCollapsedRaw] = useState<Set<string>>(() => {
     try {
-      const known = new Set(allClusterIds());
+      const known = new Set(cx.allClusterIds());
       const saved: string[] = JSON.parse(localStorage.getItem(COLLAPSED_KEY) || '[]');
       return new Set(saved.filter((id) => known.has(id)));
     } catch {
@@ -343,12 +337,12 @@ function ClusterFlowInner() {
     [rf, setCollapsed],
   );
 
-  const allTopCollapsed = useMemo(() => CLUSTER_TREE.every((c) => collapsed.has(c.id)), [collapsed]);
+  const allTopCollapsed = useMemo(() => cx.tree.every((c) => collapsed.has(c.id)), [collapsed, cx]);
   const agentStroke = theme.dark ? '#b794d4' : '#9673a6';
 
   const { nodes, edges } = useMemo(() => {
-    const base = layoutRoot(collapsed, toggle);
-    const agents = showAgents ? buildAgents(base, collapsed, agentStroke) : { nodes: [], edges: [] };
+    const base = layoutRoot(collapsed, toggle, cx);
+    const agents = showAgents ? buildAgents(base, collapsed, agentStroke, cx) : { nodes: [], edges: [] };
     let allNodes = [...base, ...agents.nodes];
     const q = query.trim().toLowerCase();
     if (q) {
@@ -361,10 +355,10 @@ function ClusterFlowInner() {
       });
     }
     const connEdges = showConnections
-      ? buildEdges(collapsed, theme.edge.neutral, theme.edgeLabel, allTopCollapsed)
+      ? buildEdges(collapsed, theme.edge.neutral, theme.edgeLabel, allTopCollapsed, cx)
       : [];
     return { nodes: allNodes, edges: [...connEdges, ...agents.edges] };
-  }, [collapsed, toggle, query, showAgents, showConnections, allTopCollapsed, theme, agentStroke]);
+  }, [collapsed, toggle, query, showAgents, showConnections, allTopCollapsed, theme, agentStroke, cx]);
 
   return (
     <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
@@ -381,7 +375,7 @@ function ClusterFlowInner() {
         proOptions={{ hideAttribution: true }}
         onNodeClick={(_e, node) => {
           if (node.type === 'agent') {
-            const agent = AGENTS.find((a) => a.id === node.id);
+            const agent = cx.agents.find((a) => a.id === node.id);
             if (agent) {
               setInspectAgent(agent);
               setInspect(null);
@@ -391,7 +385,7 @@ function ClusterFlowInner() {
           if (node.type !== 'tile') return;
           // Tile ids are namespaced `<clusterId>__<moduleId>`.
           const modId = node.id.split('__')[1];
-          const mod = MODULE_BY_ID[modId];
+          const mod = cx.moduleById[modId];
           if (mod) {
             setInspect(mod);
             setInspectAgent(null);
@@ -472,7 +466,7 @@ function ClusterFlowInner() {
           Expand all
         </button>
         <button
-          onClick={() => setAll(new Set(allClusterIds()))}
+          onClick={() => setAll(new Set(cx.allClusterIds()))}
           style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 999, cursor: 'pointer', border: `1.5px solid ${theme.app.tabBorder}`, background: 'transparent', color: theme.app.tabText }}
         >
           Collapse all
@@ -497,7 +491,7 @@ function ClusterFlowInner() {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
             {inspectAgent.connects.map((c) => (
               <span key={c} style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: theme.inspector.chipBg, color: theme.inspector.chipText }}>
-                {CLUSTER_NAME[c] ?? c}
+                {cx.name[c] ?? c}
               </span>
             ))}
           </div>

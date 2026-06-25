@@ -1,16 +1,10 @@
 import { useState, type ReactNode } from 'react';
 
 import { useTheme } from '../theme';
+import { useProject } from '../project';
 import { useTeamState } from '../state';
 import { RoadmapTimeline } from './RoadmapTimeline';
-import { ENGINEERS, ENGINEER_BY_ID, UNASSIGNED } from '../model/team';
-import {
-  ROADMAP,
-  ROADMAP_INTRO,
-  type Deliverable,
-  type DeliverableStatus,
-  type RoadmapPhase,
-} from '../model/roadmap';
+import type { Deliverable, DeliverableStatus, RoadmapPhase } from '../model/types';
 
 const STATUS_LABEL: Record<DeliverableStatus, string> = {
   done: 'done',
@@ -34,6 +28,8 @@ const DOMAIN_SHORT: Record<string, string> = {
 
 export function RoadmapBoard() {
   const theme = useTheme();
+  const { delivery } = useProject();
+  const { roadmap: ROADMAP, roadmapIntro: ROADMAP_INTRO } = delivery!;
   const { statusOf, conn } = useTeamState();
   const [mode, setMode] = useState<'timeline' | 'list'>('timeline');
 
@@ -130,6 +126,8 @@ function Phase({ phase }: { phase: RoadmapPhase }) {
 
 function Item({ item }: { item: Deliverable }) {
   const theme = useTheme();
+  const { delivery } = useProject();
+  const { engineers: ENGINEERS, engineerById: ENGINEER_BY_ID, unassigned: UNASSIGNED } = delivery!;
   const { statusOf, assigneeOf, update, conn, openDetail } = useTeamState();
   const status = statusOf(item);
   const assignee = assigneeOf(item);

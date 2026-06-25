@@ -6,9 +6,9 @@
  */
 
 import { useTheme } from '../theme';
+import { useProject } from '../project';
 import { useTeamState } from '../state';
-import { ENGINEERS, UNASSIGNED, type Engineer } from '../model/team';
-import { ROADMAP, type Deliverable } from '../model/roadmap';
+import type { Engineer, Deliverable } from '../model/types';
 import type { Status } from '../api';
 
 const STATUS_MARK: Record<Status, string> = { done: '✓', wip: '◐', todo: '☐' };
@@ -20,19 +20,21 @@ interface LaneDef {
   color: string;
 }
 
-const LANES: LaneDef[] = [
-  ...ENGINEERS.map((e: Engineer) => ({ id: e.id, lane: e.lane, color: e.color })),
-  { id: UNASSIGNED, lane: 'Unassigned', color: '#94a3b8' },
-];
-
-/** Flat list of every deliverable with its phase title, for lookup. */
-const ALL: { d: Deliverable; phase: string }[] = ROADMAP.flatMap((p) =>
-  p.items.map((d) => ({ d, phase: p.title.replace(/^Phase \d+ · /, '') })),
-);
-
 export function TeamBoard() {
   const theme = useTheme();
+  const { delivery } = useProject();
+  const { engineers: ENGINEERS, unassigned: UNASSIGNED, roadmap: ROADMAP } = delivery!;
   const { assigneeOf } = useTeamState();
+
+  const LANES: LaneDef[] = [
+    ...ENGINEERS.map((e: Engineer) => ({ id: e.id, lane: e.lane, color: e.color })),
+    { id: UNASSIGNED, lane: 'Unassigned', color: '#94a3b8' },
+  ];
+
+  /** Flat list of every deliverable with its phase title, for lookup. */
+  const ALL: { d: Deliverable; phase: string }[] = ROADMAP.flatMap((p) =>
+    p.items.map((d) => ({ d, phase: p.title.replace(/^Phase \d+ · /, '') })),
+  );
 
   const byLane: Record<string, { d: Deliverable; phase: string }[]> = {};
   for (const lane of LANES) byLane[lane.id] = [];
