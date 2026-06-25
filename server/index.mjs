@@ -23,15 +23,33 @@ const FILE = join(DATA_DIR, 'state.json');
 
 const VALID_STATUS = new Set(['done', 'wip', 'todo']);
 
+/** Project ids and deliverable ids become object keys — keep them to a safe,
+ *  bounded charset and reject prototype-polluting names. */
+const SAFE_KEY = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+const FORBIDDEN_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
+function safeKey(s, max) {
+  return typeof s === 'string' && s.length > 0 && s.length <= max && SAFE_KEY.test(s) && !FORBIDDEN_KEYS.has(s);
+}
+const cap = (v, max) => String(v).slice(0, max);
+
+/** Returned for unknown projects without inserting anything (GET must not mutate). */
+const EMPTY_BUCKET = Object.freeze({ overrides: Object.freeze({}), updatedAt: null });
+
 /** In-memory mirror of the store; the file is the durable copy.
  *  Shape: { projects: { [projectId]: { overrides, updatedAt } }, updatedAt }. */
 let state = { projects: {}, updatedAt: null };
 /** Serialize writes so concurrent PATCHes can't clobber the file. */
 let writeChain = Promise.resolve();
 
-/** Lazily get (creating if needed) a project's override bucket. */
-function bucket(project) {
-  if (!state.projects[project]) state.projects[project] = { overrides: {}, updatedAt: null };
+/** Read a project's bucket WITHOUT creating it — GET stays side-effect free. */
+function readBucket(project) {
+  return state.projects[project] ?? EMPTY_BUCKET;
+}
+/** Get-or-create a project's bucket — writes only. */
+function ensureBucket(project) {
+  if (!Object.prototype.hasOwnProperty.call(state.projects, project)) {
+    state.projects[project] = { overrides: {}, updatedAt: null };
+  }
   return state.projects[project];
 }
 
@@ -91,26 +109,30 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.get('/api/:project/state', (req, res) => {
-  res.json(bucket(String(req.params.project)));
+  const project = String(req.params.project);
+  if (!safeKey(project, 64)) return res.status(400).json({ error: 'invalid project id' });
+  res.json(readBucket(project));
 });
 
 app.patch('/api/:project/deliverable/:id', async (req, res) => {
   const project = String(req.params.project);
   const id = String(req.params.id);
-  const { status, assignee, ticket, by } = req.body ?? {};
+  if (!safeKey(project, 64)) return res.status(400).json({ error: 'invalid project id' });
+  if (!safeKey(id, 128)) return res.status(400).json({ error: 'invalid deliverable id' });
 
+  const { status, assignee, ticket, by } = req.body ?? {};
   if (status !== undefined && !VALID_STATUS.has(status)) {
     return res.status(422).json({ error: `invalid status '${status}'` });
   }
 
-  const b = bucket(project);
+  const b = ensureBucket(project);
   const prev = b.overrides[id] ?? {};
   const next = { ...prev };
   if (status !== undefined) next.status = status;
-  if (assignee !== undefined) next.assignee = String(assignee);
-  if (ticket !== undefined) next.ticket = ticket ? String(ticket) : undefined;
+  if (assignee !== undefined) next.assignee = cap(assignee, 64);
+  if (ticket !== undefined) next.ticket = ticket ? cap(ticket, 128) : undefined;
   next.updatedAt = new Date().toISOString();
-  if (by !== undefined) next.updatedBy = String(by);
+  if (by !== undefined) next.updatedBy = cap(by, 64);
 
   b.overrides[id] = next;
   b.updatedAt = next.updatedAt;

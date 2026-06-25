@@ -14,6 +14,16 @@ export function validateProject(model: ProjectModel): ProjectModel {
   const tag = `[project:${model.meta.id}]`;
   const moduleById = model.clusters?.moduleById ?? model.zoom?.moduleById;
 
+  // Duplicate module ids silently collapse in MODULE_BY_ID (last wins) and
+  // mis-attribute status — catch them up front from the tracker inventory.
+  if (model.tracker?.tiles) {
+    const seen = new Set<string>();
+    for (const t of model.tracker.tiles) {
+      if (seen.has(t.id)) throw new Error(`${tag} duplicate module id in tracker: ${t.id}`);
+      seen.add(t.id);
+    }
+  }
+
   if (model.delivery) {
     const { roadmap, work } = model.delivery;
     const ids = new Set(roadmap.flatMap((p) => p.items.map((d) => d.id)));
