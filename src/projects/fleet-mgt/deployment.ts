@@ -1,8 +1,9 @@
 /**
- * Deployment / runtime topology — the on-prem appliance (Postgres + Redis from
- * docker-compose today; gateway/core/dashboard + local models on the pilot box)
- * inside a sovereign, air-gappable boundary. WhatsApp Cloud API is the only
- * external egress. Rendered by the generic ArchFlow.
+ * Deployment / runtime topology — the on-prem appliance. The full stack is now
+ * containerized via docker-compose (db, redis, a one-shot migrate job, core-api,
+ * gateway, dashboard) on a 47xxx host-port block; the LLM/VLM run as native
+ * Ollama on the pilot box. Everything sits inside a sovereign, air-gappable
+ * boundary; WhatsApp Cloud API is the only external egress. Rendered by ArchFlow.
  */
 import type { ArchNodeDef, ArchEdgeDef, Status } from '../../model/types';
 
@@ -16,12 +17,13 @@ export const DEPLOY_NODES: ArchNodeDef[] = [
 
   n('boundary', 'Sovereign boundary — on-prem appliance / k3s · air-gappable · NESA / ISO 27001', 40, 140, 1000, 450, 'infra', { zone: true }),
 
-  n('gateway', 'whatsapp-gateway — FastAPI\n(:8001) · DMZ', 80, 200, 260, 70, 'infra'),
-  n('core', 'core-api — FastAPI / uvicorn\n(:8000) · agent + booking', 400, 200, 280, 70, 'infra'),
-  n('dash', 'dashboard — React + Vite\n(:5173)', 740, 200, 280, 70, 'infra'),
+  n('gateway', 'whatsapp-gateway — FastAPI\n(:8000 → 47080) · DMZ', 80, 200, 260, 70, 'infra'),
+  n('core', 'core-api — FastAPI / uvicorn\n(:8090 → 47090) · agent + booking', 400, 200, 280, 70, 'infra'),
+  n('dash', 'dashboard — nginx + built SPA (React/Vite)\n(:80 → 47173)', 740, 200, 280, 70, 'infra'),
 
-  n('pg', 'fleet_db — PostgreSQL 16\n(:5433 → 5432)', 80, 320, 260, 70, 'infra'),
-  n('redis', 'fleet_redis — Redis 7\n(:6380 → 6379, AOF)', 400, 320, 260, 70, 'infra'),
+  n('pg', 'fleet_db — PostgreSQL 16\n(:5432 → 47432)', 80, 320, 260, 70, 'infra'),
+  n('redis', 'fleet_redis — Redis 7\n(:6379 → 47379, AOF)', 400, 320, 260, 70, 'infra'),
+  n('migrate', 'migrate — one-shot\nalembic upgrade head', 740, 320, 280, 70, 'infra'),
 
   n('llm', 'llama.cpp — Qwen3 (/v1, local)', 80, 440, 280, 70, 'ai'),
   n('vlm', 'Qwen2.5-VL — license OCR', 400, 440, 280, 70, 'ai'),
@@ -39,9 +41,10 @@ function e(id: string, source: string, target: string, kind: ArchEdgeDef['kind']
 export const DEPLOY_EDGES: ArchEdgeDef[] = [
   e('d_wa_gw', 'waUser', 'gateway', 'live', 'WhatsApp', 'b', 't'),
   e('d_gw_meta', 'gateway', 'meta', 'live', 'Cloud API (egress)', 'r', 'l'),
-  e('d_gw_core', 'gateway', 'core', 'live', 'internal (mTLS)', 'r', 'l'),
+  e('d_gw_core', 'gateway', 'core', 'live', 'internal (shared secret)', 'r', 'l'),
   e('d_staff_dash', 'staffUser', 'dash', 'live', 'HTTPS', 'b', 't'),
   e('d_dash_core', 'dash', 'core', 'live', 'REST / SSE', 'l', 'r'),
+  e('d_migrate_pg', 'migrate', 'pg', 'live', 'schema', 'l', 'r'),
   e('d_core_pg', 'core', 'pg', 'live', 'asyncpg', 'b', 't'),
   e('d_core_redis', 'core', 'redis', 'live', 'sessions', 'b', 't'),
   e('d_core_llm', 'core', 'llm', 'live', 'completions', 'l', 't'),

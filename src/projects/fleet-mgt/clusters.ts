@@ -67,7 +67,7 @@ export const CLUSTER_EDGES: ClusterEdgeDef[] = [
 ];
 
 export const AGENTS: AgentDef[] = [
-  { id: 'ag_booking', name: 'Booking Agent', desc: 'Claude tool-calling loop — slot-fills the request over WhatsApp (Arabic/Emirati-first) and drives the booking engine.', connects: ['c_convo', 'c_booking'] },
+  { id: 'ag_booking', name: 'Booking Agent', desc: 'Qwen3 tool-calling loop — slot-fills the request over WhatsApp (Arabic/Emirati-first) and drives the booking engine.', connects: ['c_convo', 'c_booking'] },
   { id: 'ag_license', name: 'License Agent', desc: 'Gate-keeps each booking — runs the licence photo through the VLM and classifies valid/expired/unclear.', connects: ['c_convo', 'c_ai'] },
   { id: 'ag_negotiator', name: 'Allocation Negotiator', desc: 'When the first choice is unavailable, proposes best-enabler alternatives and priority bumps for staff to approve.', connects: ['c_booking', 'c_ops'] },
 ];

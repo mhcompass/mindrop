@@ -14,7 +14,7 @@ export const CLUSTER_TREE: ClusterTreeDef[] = [
   },
   {
     id: 'c_api', name: 'API & Gateway', accent: '#0ea5e9',
-    children: ['api-gateway', 'api-auth', 'api-videos', 'api-projects', 'api-workspaces', 'api-docs', 'api-editor', 'api-presets', 'api-stats', 'api-brands', 'api-websocket'],
+    children: ['api-gateway', 'api-auth', 'api-users', 'api-videos', 'api-projects', 'api-workspaces', 'api-docs', 'api-editor', 'api-presets', 'api-stats', 'api-brands', 'api-websocket'],
   },
   {
     id: 'c_workers', name: 'Worker Pipeline', accent: '#7c3aed',
@@ -26,7 +26,7 @@ export const CLUSTER_TREE: ClusterTreeDef[] = [
   },
   {
     id: 'c_video', name: 'Video Processing', accent: '#e11d48',
-    children: ['video-processor', 'auto-zoom', 'action-detector', 'video-effects'],
+    children: ['video-processor', 'auto-zoom', 'silence-removal', 'title-cards', 'video-effects'],
   },
   {
     id: 'c_data', name: 'Data & Storage', accent: '#475569',

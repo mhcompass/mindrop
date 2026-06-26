@@ -31,7 +31,7 @@ const SECTIONS: Section[] = [
     title: 'CONVERSATION & WHATSAPP',
     mods: [
       m('gateway-wa', 'WhatsApp Gateway', 'done', 'done', 'Meta webhook in/out · signature verify · media download · templates', { owner: 'Gateway', effort: 'M', channel: true, sensitivity: 'pii' }),
-      m('agent-orch', 'Agent Orchestrator', 'done', 'done', 'Claude tool-calling loop · slot-filling · Arabic/Emirati NLU', { owner: 'AI', effort: 'L', critical: true }),
+      m('agent-orch', 'Agent Orchestrator', 'done', 'done', 'Qwen3 tool-calling loop · slot-filling · Arabic/Emirati NLU', { owner: 'AI', effort: 'L', critical: true }),
       m('license-verify', 'License Verification', 'done', 'done', 'image → VLM OCR → classify (valid/expired/unclear/review)', { owner: 'AI', effort: 'M', sensitivity: 'pii' }),
       m('escalation', 'Escalation Handler', 'done', 'done', 'route unclear/urgent to staff · notify operator', { owner: 'Core', effort: 'S' }),
       m('template-mgmt', 'Message Templates', 'partial', 'partial', 'WhatsApp template registry (table live; approval UI in progress)', { owner: 'Gateway', effort: 'S' }),
@@ -40,7 +40,7 @@ const SECTIONS: Section[] = [
   {
     title: 'STAFF DASHBOARD',
     mods: [
-      m('dashboard', 'Staff Dashboard (React)', 'done', 'done', '11 pages: ops · bookings · fleet · drivers · escalations · templates · reports · admin · audit · schedule · rules', { owner: 'Experience', effort: 'L' }),
+      m('dashboard', 'Staff Dashboard (React)', 'done', 'done', '10 pages: ops (live fleet map) · overview · bookings · schedule · escalations · fleet · drivers · audit · admin · rules (+ login)', { owner: 'Experience', effort: 'L' }),
       m('kpi-report', 'KPI & Reporting', 'done', 'done', 'automation rate · utilization · Excel/PDF export', { owner: 'Platform', effort: 'M' }),
       m('rules-engine', 'Tenant Config & Rules', 'done', 'done', 'rank tiers · priority weights · bump policy · mission keywords', { owner: 'Core', effort: 'M' }),
       m('auth-rbac', 'Auth & RBAC', 'done', 'done', '5 roles (admin/fleet_manager/operator/delivery/viewer) · token guards', { owner: 'Platform', effort: 'M', sensitivity: 'sensitive' }),

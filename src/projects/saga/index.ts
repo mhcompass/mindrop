@@ -24,7 +24,7 @@ export const model: ProjectModel = validateProject({
     id: 'saga',
     name: 'Saga',
     brandTitle: 'Mindrop · Saga',
-    stamp: { date: '2026-06-24', profile: 'video-docs', scope: 'AI screen-recording → video + docs · monorepo' },
+    stamp: { date: '2026-06-26', profile: 'video-docs', scope: 'AI screen-recording → video + docs · monorepo' },
   },
 
   posture: { nodes: POSTURE_NODES, edges: POSTURE_EDGES, kinds: ['live', 'seeded', 'planned'] },

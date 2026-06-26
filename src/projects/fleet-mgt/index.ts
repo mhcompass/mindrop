@@ -24,7 +24,7 @@ export const model: ProjectModel = validateProject({
     id: 'fleet-mgt',
     name: 'Flexible Fleet',
     brandTitle: 'Mindrop · Flexible Fleet',
-    stamp: { date: '2026-06-24', profile: 'sharjah-police', scope: 'Agentic WhatsApp vehicle booking · pilot build' },
+    stamp: { date: '2026-06-26', profile: 'sharjah-police', scope: 'Agentic WhatsApp vehicle booking · pilot build' },
   },
 
   posture: { nodes: POSTURE_NODES, edges: POSTURE_EDGES, kinds: ['live', 'seeded', 'planned'] },

@@ -14,21 +14,21 @@ export const DEPLOY_NODES: ArchNodeDef[] = [
   n('user', 'Browser · any tailnet device', 80, 70, 240, 40, 'actor'),
   n('ext', 'Chrome Extension · recorder', 360, 70, 240, 40, 'actor'),
 
-  n('boundary', 'Saga stack — Docker Compose (spark) · Tailscale Serve (private tailnet)', 40, 140, 940, 430, 'infra', { zone: true }),
+  n('boundary', 'Saga stack — Docker Compose (spark) · Tailscale Serve (private tailnet) · web·api·worker·ts under --profile production, hot-reload *-dev under --profile dev', 40, 140, 940, 430, 'infra', { zone: true }),
 
   n('ts', 'tailscale — Serve :443 (MagicDNS)\nsaga.<tailnet>.ts.net', 80, 200, 280, 70, 'infra'),
   n('web', 'web — nginx (:47173)\nsingle-origin gateway', 80, 300, 280, 64, 'infra'),
   n('api', 'api — FastAPI / uvicorn\n(:47800) · routers + WS', 420, 250, 280, 70, 'infra'),
   n('worker', 'worker — ARQ\nFFmpeg render pipeline', 420, 360, 280, 64, 'infra'),
-  n('pg', 'postgres:16\n(:47432)', 740, 250, 220, 64, 'infra'),
-  n('redis', 'redis:7\n(:47379) · ARQ + pub/sub', 740, 340, 220, 64, 'infra'),
-  n('storage', 'storage_data / MinIO (opt)\nvideos · frames · audio', 740, 430, 220, 60, 'infra'),
-  n('net', 'compose network: saga · volumes: postgres_data · redis_data · storage_data · models_data', 80, 530, 880, 30, 'note'),
+  n('pg', 'postgres:16-alpine\n(:47432)', 740, 250, 220, 64, 'infra'),
+  n('redis', 'redis:7-alpine\n(:47379) · ARQ + pub/sub', 740, 340, 220, 64, 'infra'),
+  n('storage', 'storage volume / MinIO\nvideos · frames · audio', 740, 430, 220, 60, 'infra'),
+  n('net', 'network: saga-network · volumes: saga-{postgres-data · redis-data · storage · models · ollama · minio}', 80, 530, 880, 30, 'note'),
 
   n('aiZone', 'AI host — separate box (GPU)', 1020, 140, 360, 230, 'external', { zone: true }),
   n('ollama', 'LLM — Qwen3-30B / LLaVA\n(ollama|openai · :11434)', 1050, 200, 300, 56, 'external'),
   n('kokoro', 'Kokoro TTS — FastAPI\n(:8000)', 1050, 270, 300, 56, 'external'),
-  n('aiNote', 'Whisper runs in-process (faster-whisper); LLM + advanced TTS are remote.', 1050, 332, 300, 30, 'note'),
+  n('aiNote', 'Whisper runs in-process (faster-whisper); LLM + advanced TTS default to this remote host. An in-stack ollama (--profile ai) and minio (--profile storage) are optional local fallbacks.', 1050, 332, 300, 56, 'note'),
 ];
 
 function e(id: string, source: string, target: string, kind: ArchEdgeDef['kind'], label?: string, sh?: ArchEdgeDef['sh'], th?: ArchEdgeDef['th']): ArchEdgeDef {

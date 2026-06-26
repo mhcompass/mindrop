@@ -29,6 +29,7 @@ const SECTIONS: Section[] = [
     mods: [
       m('api-gateway', 'FastAPI App Server', 'done', 'done', 'routing · middleware · static /storage', { owner: 'API', effort: 'M', critical: true }),
       m('api-auth', 'Auth & Security', 'done', 'done', 'JWT · login/register/refresh · RBAC', { owner: 'API', sensitivity: 'sensitive' }),
+      m('api-users', 'Users Router', 'done', 'done', 'profile · account management (routers/users.py)', { owner: 'API', sensitivity: 'pii' }),
       m('api-videos', 'Videos Router', 'done', 'done', 'upload · CRUD · metadata · enqueue jobs', { owner: 'API', effort: 'M' }),
       m('api-projects', 'Projects Router', 'done', 'done', 'CRUD · videos list · sharing', { owner: 'API' }),
       m('api-workspaces', 'Workspaces Router', 'done', 'done', 'teams · members · invites · roles', { owner: 'API' }),
@@ -63,10 +64,11 @@ const SECTIONS: Section[] = [
   {
     title: 'VIDEO PROCESSING',
     mods: [
-      m('video-processor', 'Video Processor (FFmpeg)', 'done', 'done', 'frame/audio extraction · merge · convert', { owner: 'Video', effort: 'L', critical: true }),
-      m('auto-zoom', 'Auto-Zoom Effects', 'done', 'done', 'click detection → zoom keyframes', { owner: 'Video', effort: 'M' }),
-      m('action-detector', 'Action Detector', 'done', 'done', 'click · hover · input from frames', { owner: 'Video', effort: 'M' }),
-      m('video-effects', 'Effects & Transitions', 'done', 'done', 'fade · slide · zoom · branding overlays', { owner: 'Video' }),
+      m('video-processor', 'Video Processor (FFmpeg)', 'done', 'done', 'frame/audio extraction · merge · convert (processor.py)', { owner: 'Video', effort: 'L', critical: true }),
+      m('auto-zoom', 'Auto-Zoom Effects', 'done', 'done', 'click/cursor inference → zoom keyframes (auto_zoom.py)', { owner: 'Video', effort: 'M' }),
+      m('silence-removal', 'Silence Removal', 'done', 'done', 'detect + trim dead air (silence.py)', { owner: 'Video', effort: 'M' }),
+      m('title-cards', 'Title Cards', 'done', 'done', 'generated intro / section title frames (title_cards.py)', { owner: 'Video' }),
+      m('video-effects', 'Effects & Transitions', 'done', 'done', 'fade · slide · zoom · branding overlays (effects.py)', { owner: 'Video' }),
     ],
   },
   {
